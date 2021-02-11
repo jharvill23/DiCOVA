@@ -1,0 +1,38 @@
+use_gpu: true
+
+data:
+    sr: 8000
+    shift_ms: 10
+    fftl: 1024
+    num_mels: 80
+    hop_length: 160
+    top_db: 120
+    train_test_frac: 0.9
+    word_occurance_threshold: 20
+    test_utts_per_word: 2
+    val_utts_per_word: 2
+
+directories:
+    coswara_root: /home/john/Documents/School/Spring_2021/Coswara-Data/Extracted_data/
+    opensmile_feats: opensmile_feats/
+    features: features/
+    exps: exps/
+
+model:
+    name: Fixed_length_autoencoder
+    hidden_size: 200
+    bottleneck_size: 20
+    encoder_num_layers: 2
+    decoder_num_layers: 2
+    bidirectional: true
+    num_linear_layers: 2
+    batch_first: true
+    dropout: 0.1
+    lr: 0.0001
+    embed_dim: 100
+
+train:
+    log_step: 50
+    model_save_step: 2000
+    num_epochs: 30000
+    batch_size: 20
