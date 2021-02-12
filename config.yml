@@ -9,8 +9,8 @@ data:
     top_db: 120
     train_test_frac: 0.9
     word_occurance_threshold: 20
-    test_utts_per_word: 2
-    val_utts_per_word: 2
+    num_test_utts_per_class: 100
+    num_val_utts_per_class: 50
 
 directories:
     coswara_root: /home/john/Documents/School/Spring_2021/Coswara-Data/Extracted_data/
