@@ -18,6 +18,7 @@ import time
 import multiprocessing
 import concurrent.futures
 import json
+import pandas as pd
 
 
 config = edict(yaml.load(open('config.yml'), Loader=yaml.SafeLoader))
@@ -29,6 +30,26 @@ def collect_files(directory):
             filename = os.path.join(path, name)
             all_files.append(filename)
     return all_files
+
+def dicova_metadata(file):
+    name = file.split('/')[-1][:-4]
+    if not os.path.exists('dicova_metadata.pkl'):
+        import csv
+        lines = []
+        with open(os.path.join(config.directories.dicova_root, 'metadata.csv'), newline='') as f:
+            reader = csv.reader(f)
+            for i, row in enumerate(reader):
+                if i > 0:
+                    lines.append(row)
+        metadata = {}
+        for line in lines:
+            metadata[line[0]] = {'Covid_status': line[1], 'Gender': line[2], 'Nationality': line[3]}
+        joblib.dump(metadata, 'dicova_metadata.pkl')
+    else:
+        metadata = joblib.load('dicova_metadata.pkl')
+    sub_data = metadata[name]
+    sub_data['name'] = name
+    return sub_data
 
 def get_metadata(file):
     pieces = file.split('/')
@@ -82,9 +103,40 @@ def get_coswara_partition():
                  'train_negative': train_negative}
     joblib.dump(partition, 'coswara_partition.pkl')
 
+def get_dicova_partitions():
+    if not os.path.exists('dicova_partitions.pkl'):
+        files = collect_files(os.path.join(config.directories.dicova_root, 'LISTS'))
+        folds = {}
+        for file in files:
+            name = file.split('/')[-1][:-4]
+            pieces = name.split('_')
+            train_val = pieces[0]
+            fold = pieces[2]
+            if fold in folds:
+                folds[fold][train_val] = file
+            else:
+                folds[fold] = {train_val: file}
+        fold_files = {}
+        for fold, partition in folds.items():
+            train = partition['train']
+            with open(train) as f:
+                train_files = f.readlines()
+            train_files = [os.path.join(config.directories.opensmile_feats, x.strip() + '.pkl') for x in train_files]
+            val = partition['val']
+            with open(val) as f:
+                val_files = f.readlines()
+            val_files = [os.path.join(config.directories.opensmile_feats, x.strip() + '.pkl') for x in val_files]
+            fold_files[fold] = {'train': train_files, 'val': val_files}
+        joblib.dump(fold_files, 'dicova_partitions.pkl')
+    else:
+        fold_files = joblib.load('dicova_partitions.pkl')
+    return fold_files
+
 
 def main():
     """"""
+    # files = get_dicova_partitions()
+    # meta = dicova_metadata('/home/john/Documents/School/Spring_2021/DiCOVA/wavs/aBXnKRBt_cough.wav')
     # get_coswara_partition()
     # files = collect_files(config.directories.opensmile_feats)
     # possible_covid_labels = []

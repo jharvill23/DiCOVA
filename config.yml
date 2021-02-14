@@ -14,6 +14,8 @@ data:
 
 directories:
     coswara_root: /home/john/Documents/School/Spring_2021/Coswara-Data/Extracted_data/
+    dicova_root: /home/john/Documents/School/Spring_2021/DiCOVA_Train_Val_Data_Release/
+    dicova_wavs: wavs/
     opensmile_feats: opensmile_feats/
     features: features/
     exps: exps/
