@@ -10,7 +10,7 @@ from easydict import EasyDict as edict
 import shutil
 from utils import collect_files
 import utils
-from datasetCoswara import Dataset
+from datasetDiCOVA import Dataset
 from torch.utils import data
 from itertools import groupby
 import json
@@ -143,10 +143,12 @@ class Solver(object):
     def get_train_test(self):
         partition = joblib.load(self.partition)
         partition = partition[FOLD]
-        train_files = {'positive': partition['train_positive'], 'negative': partition['train_negative']}
-        test_files = {'positive': partition['test_positive'], 'negative': partition['test_negative']}
-        val_files = {'positive': partition['val_positive'], 'negative': partition['val_negative']}
-        return train_files, test_files, val_files
+
+        train_files = {'positive': partition['train_pos'], 'negative': partition['train_neg']}
+        # test_files = {'positive': partition['test_positive'], 'negative': partition['test_negative']}
+        val_files = {'positive': partition['val_pos'], 'negative': partition['val_neg']}
+
+        return train_files, val_files
 
     def val_loss(self, val, iterations):
         val_loss = 0
@@ -178,34 +180,47 @@ class Solver(object):
 
         return val_loss
 
+    def triplet_loss(self, anchor, pos, neg):
+        """"""
+
+        """*************************YOU ARE HERE**************************"""
+
+
+        stop = None
+
     def train_triplet_loss(self):
         iterations = 0
         """Get train/test"""
-        train, test, val = self.get_train_test()
+        train, val = self.get_train_test()
+        train_files_list = train['positive'] + train['negative']
+        val_files_list = val['positive'] + val['negative']
         for epoch in range(config.train.num_epochs):
             """Make dataloader"""
-
-
-            """*************************YOU ARE HERE**************************"""
-
-
-
-            train_data = Dataset(config=config, params={'files': train, 'mode': 'train'})
+            train_data = Dataset(config=config, params={'files': train_files_list,
+                                                        'mode': 'train', 'triplet': True,
+                                                        'files_dict': train})
             train_gen = data.DataLoader(train_data, batch_size=config.train.batch_size,
                                         shuffle=True, collate_fn=train_data.collate, drop_last=True)
-            val_data = Dataset(config=config, params={'files': val, 'mode': 'train'})
+            val_data = Dataset(config=config, params={'files': val_files_list,
+                                                      'mode': 'train', 'triplet': True,
+                                                      'files_dict': val})
             val_gen = data.DataLoader(val_data, batch_size=config.train.batch_size,
                                         shuffle=True, collate_fn=val_data.collate, drop_last=True)
 
             for batch_number, features in enumerate(train_gen):
-                try:
-                    spectrograms = features['features']
-                    files = features['files']
+                # try:
+                    anchors = features['anchors']
+                    pos = features['pos']
+                    neg = features['neg']
+                    triplet_files = features['files']
                     self.G = self.G.train()
 
-                    outputs, _ = self.G(spectrograms)
-                    loss = F.mse_loss(spectrograms[:, :, 0:config.data.num_mels],
-                                      outputs[:, :, 0:config.data.num_mels], reduction='sum')
+                    anchor_out = self.G(anchors)
+                    pos_out = self.G(pos)
+                    neg_out = self.G(neg)
+
+
+                    loss = self.triplet_loss(anchor=anchor_out, pos=pos_out, neg=neg_out)
 
                     # Backward and optimize.
                     self.reset_grad()
@@ -232,8 +247,8 @@ class Solver(object):
                         print('Saved model checkpoints into {}...'.format(self.model_save_dir))
 
                     iterations += 1
-                except:
-                    """"""
+                # except:
+                #     """"""
 
     def eval(self):
 

@@ -31,7 +31,7 @@ def collect_files(directory):
             all_files.append(filename)
     return all_files
 
-def dicova_metadata(file):
+def dicova_metadata(file, metadata=None):
     name = file.split('/')[-1][:-4]
     if not os.path.exists('dicova_metadata.pkl'):
         import csv
@@ -46,7 +46,8 @@ def dicova_metadata(file):
             metadata[line[0]] = {'Covid_status': line[1], 'Gender': line[2], 'Nationality': line[3]}
         joblib.dump(metadata, 'dicova_metadata.pkl')
     else:
-        metadata = joblib.load('dicova_metadata.pkl')
+        if metadata == None:
+            metadata = joblib.load('dicova_metadata.pkl')
     sub_data = metadata[name]
     sub_data['name'] = name
     return sub_data
@@ -122,11 +123,29 @@ def get_dicova_partitions():
             with open(train) as f:
                 train_files = f.readlines()
             train_files = [os.path.join(config.directories.opensmile_feats, x.strip() + '.pkl') for x in train_files]
+            """Get train positives and train negatives"""
+            train_pos = []
+            train_neg = []
+            for file in train_files:
+                meta = dicova_metadata(file)
+                if meta['Covid_status'] == 'p':
+                    train_pos.append(file)
+                elif meta['Covid_status'] == 'n':
+                    train_neg.append(file)
             val = partition['val']
             with open(val) as f:
                 val_files = f.readlines()
             val_files = [os.path.join(config.directories.opensmile_feats, x.strip() + '.pkl') for x in val_files]
-            fold_files[fold] = {'train': train_files, 'val': val_files}
+            val_pos = []
+            val_neg = []
+            for file in val_files:
+                meta = dicova_metadata(file)
+                if meta['Covid_status'] == 'p':
+                    val_pos.append(file)
+                elif meta['Covid_status'] == 'n':
+                    val_neg.append(file)
+            fold_files[fold] = {'train_pos': train_pos, 'train_neg': train_neg,
+                                'val_pos': val_pos, 'val_neg': val_neg}
         joblib.dump(fold_files, 'dicova_partitions.pkl')
     else:
         fold_files = joblib.load('dicova_partitions.pkl')
@@ -135,7 +154,7 @@ def get_dicova_partitions():
 
 def main():
     """"""
-    # files = get_dicova_partitions()
+    files = get_dicova_partitions()
     # meta = dicova_metadata('/home/john/Documents/School/Spring_2021/DiCOVA/wavs/aBXnKRBt_cough.wav')
     # get_coswara_partition()
     # files = collect_files(config.directories.opensmile_feats)

@@ -64,3 +64,33 @@ class Fixed_length_autoencoder(nn.Module):
         x = F.tanh(x)
         x = self.full2(x)
         return x, bottleneck_vector_
+
+class Feedforward(nn.Module):
+    def __init__(self, config):
+        super(Feedforward, self).__init__()
+        self.config = config
+        self.input_size = 6373  # number of OpenSMILE features
+        self.output_dim = config.model.output_dim
+        self.batch_first = config.model.batch_first
+        self.dropout = config.model.dropout
+
+        self.full1 = nn.Linear(in_features=self.input_size, out_features=1000)
+        self.dropout1 = nn.Dropout(p=self.dropout)
+        self.full2 = nn.Linear(in_features=1000, out_features=1000)
+        self.dropout2 = nn.Dropout(p=self.dropout)
+        self.full3 = nn.Linear(in_features=1000, out_features=1000)
+        self.dropout3 = nn.Dropout(p=self.dropout)
+        self.full4 = nn.Linear(in_features=1000, out_features=self.output_dim)
+
+    def forward(self, x):
+        x = self.full1(x)
+        x = self.dropout1(x)
+        x = F.tanh(x)
+        x = self.full2(x)
+        x = self.dropout2(x)
+        x = F.tanh(x)
+        x = self.full3(x)
+        x = self.dropout3(x)
+        x = F.tanh(x)
+        x = self.full4(x)
+        return x

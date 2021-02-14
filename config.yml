@@ -21,17 +21,11 @@ directories:
     exps: exps/
 
 model:
-    name: Fixed_length_autoencoder
-    hidden_size: 200
-    bottleneck_size: 20
-    encoder_num_layers: 2
-    decoder_num_layers: 2
-    bidirectional: true
-    num_linear_layers: 2
+    name: Feedforward
     batch_first: true
     dropout: 0.1
     lr: 0.0001
-    embed_dim: 100
+    output_dim: 100
 
 train:
     log_step: 50

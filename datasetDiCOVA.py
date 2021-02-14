@@ -30,10 +30,16 @@ class Dataset(object):
     def __init__(self, config, params):
         """Get the data and supporting files"""
         self.feature_dir = config.directories.opensmile_feats
-
+        self.config = config
         'Initialization'
         self.list_IDs = params['files']
         self.mode = params["mode"]
+        if os.path.exists('dicova_metadata.pkl'):
+            self.metadata = joblib.load('dicova_metadata.pkl')
+        else:
+            self.metadata = utils.dicova_metadata()
+        self.triplet = params["triplet"]
+        self.files_dict = params["files_dict"]
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -42,15 +48,27 @@ class Dataset(object):
     def __getitem__(self, index):
         'Get the data item'
         file = self.list_IDs[index]
-        try:
-            spect = self.get_feature(file)
+        metadata = utils.dicova_metadata(file, metadata=self.metadata)
+        if self.triplet:
+            """Our file is the anchor. Now we need a positive and negative """
+            random.shuffle(self.files_dict['positive'])
+            random.shuffle(self.files_dict['negative'])
+            if metadata['Covid_status'] == 'p':
+                pos = self.files_dict['positive'][0]
+                neg = self.files_dict['negative'][0]
+            else:
+                neg = self.files_dict['positive'][0]
+                pos = self.files_dict['negative'][0]
+            triplet_files = {'anchor': file, 'pos': pos, 'neg': neg}
+            triplet_features = {}
+            triplet_features['anchor'] = self.to_GPU(torch.from_numpy(joblib.load(triplet_files['anchor'])))
+            triplet_features['pos'] = self.to_GPU(torch.from_numpy(joblib.load(triplet_files['pos'])))
+            triplet_features['neg'] = self.to_GPU(torch.from_numpy(joblib.load(triplet_files['neg'])))
 
-            spect = spect.to(torch.float32)
+            for key, value in triplet_features.items():
+                triplet_features[key] = value.to(torch.float32)
 
-        except:
-            spect = None  # there are some weird ones with 1 frame causing problems
-
-        return [file, spect]
+        return [triplet_files, triplet_features]
 
     def to_GPU(self, tensor):
         if self.config.use_gpu == True:
@@ -87,27 +105,21 @@ class Dataset(object):
         return tensor
 
     def collate(self, data):
-        try:
+        # try:
             # files = [item[0] for item in data]
             # spects = [item[1] for item in data]
             # lengths = [item[2] for item in data]
+            if self.triplet:
+                triplet_files = [item[0] for item in data]
+                triplet_features = [item[1] for item in data]
 
-            files = []
-            spects = []
-            for item in data:
-                if item[1] != None:
-                    files.append(item[0])
-                    spects.append(item[1])
+                anchors = torch.stack([x['anchor'] for x in triplet_features])
+                pos = torch.stack([x['pos'] for x in triplet_features])
+                neg = torch.stack([x['neg'] for x in triplet_features])
 
-            features = pad_sequence(spects, batch_first=True, padding_value=0)
-
-            # test_feature = features[0].detach().cpu().numpy()
-            # plt.imshow(test_feature.T)
-            # plt.show()
-
-            return {'features': features, 'files': files, }
-        except:
-            return {'features': None, 'files': None}  # there are some weird ones with 1 frame causing problems
+                return {'anchors': anchors, 'pos': pos, 'neg': neg, 'files': triplet_files}
+        # except:
+        #     return {'features': None, 'files': None}  # there are some weird ones with 1 frame causing problems
 
 
 def main():
