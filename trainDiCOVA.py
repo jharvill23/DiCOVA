@@ -154,39 +154,23 @@ class Solver(object):
         val_loss = 0
         for batch_number, features in tqdm(enumerate(val)):
             try:
-                spectrograms = features['features']
-                files = features['files']
+                anchors = features['anchors']
+                pos = features['pos']
+                neg = features['neg']
+                triplet_files = features['files']
                 self.G = self.G.eval()
 
-                outputs, _ = self.G(spectrograms)
-                loss = F.mse_loss(spectrograms[:, :, 0:config.data.num_mels],
-                                  outputs[:, :, 0:config.data.num_mels], reduction='sum')
-                val_loss += loss.item()
+                anchor_out = self.G(anchors)
+                pos_out = self.G(pos)
+                neg_out = self.G(neg)
 
-                if batch_number == 0:
-                    spec = outputs[0]
-                    pred_spec = spec.detach().cpu().numpy()
-                    true_spec = spectrograms.detach().cpu().numpy()
-                    true_spec = true_spec[0]
-                    plt.subplot(211)
-                    plt.imshow(pred_spec[:, 0:config.data.num_mels].T)
-                    plt.subplot(212)
-                    plt.imshow(true_spec[:, 0:config.data.num_mels].T)
-                    plt.savefig(os.path.join(self.images_dir, str(iterations) + '.png'))
-                    plt.close()
+                loss = self.triplet_loss(anchor_out, pos_out, neg_out)
+                val_loss += loss.item()
 
             except:
                 """"""
 
         return val_loss
-
-    def triplet_loss(self, anchor, pos, neg):
-        """"""
-
-        """*************************YOU ARE HERE**************************"""
-
-
-        stop = None
 
     def train_triplet_loss(self):
         iterations = 0
@@ -194,6 +178,7 @@ class Solver(object):
         train, val = self.get_train_test()
         train_files_list = train['positive'] + train['negative']
         val_files_list = val['positive'] + val['negative']
+        self.triplet_loss = nn.TripletMarginWithDistanceLoss(distance_function=F.cosine_similarity)
         for epoch in range(config.train.num_epochs):
             """Make dataloader"""
             train_data = Dataset(config=config, params={'files': train_files_list,
@@ -208,7 +193,7 @@ class Solver(object):
                                         shuffle=True, collate_fn=val_data.collate, drop_last=True)
 
             for batch_number, features in enumerate(train_gen):
-                # try:
+                try:
                     anchors = features['anchors']
                     pos = features['pos']
                     neg = features['neg']
@@ -220,7 +205,7 @@ class Solver(object):
                     neg_out = self.G(neg)
 
 
-                    loss = self.triplet_loss(anchor=anchor_out, pos=pos_out, neg=neg_out)
+                    loss = self.triplet_loss(anchor_out, pos_out, neg_out)
 
                     # Backward and optimize.
                     self.reset_grad()
@@ -247,8 +232,8 @@ class Solver(object):
                         print('Saved model checkpoints into {}...'.format(self.model_save_dir))
 
                     iterations += 1
-                # except:
-                #     """"""
+                except:
+                    """"""
 
     def eval(self):
 
