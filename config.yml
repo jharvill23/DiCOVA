@@ -21,14 +21,15 @@ directories:
     exps: exps/
 
 model:
-    name: Feedforward
+    name: Classifier
     batch_first: true
-    dropout: 0.1
-    lr: 0.0001
+    dropout: 0.0
+    lr: 0.00001
     output_dim: 100
+    incorrect_scaler: 30
 
 train:
-    log_step: 50
+    log_step: 100
     model_save_step: 2000
     num_epochs: 30000
-    batch_size: 20
+    batch_size: 50

@@ -151,6 +151,11 @@ def get_dicova_partitions():
         fold_files = joblib.load('dicova_partitions.pkl')
     return fold_files
 
+def get_class2index_and_index2class():
+    class2index = {'p': 0, 'n': 1}
+    index2class = {0: 'p', 1: 'n'}
+    return class2index, index2class
+
 
 def main():
     """"""
