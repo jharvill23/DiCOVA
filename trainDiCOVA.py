@@ -19,6 +19,7 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import scipy.spatial.distance as distance
 import sklearn.metrics.pairwise as pairwise
+from sklearn import svm
 
 
 config = edict(yaml.load(open('config.yml'), Loader=yaml.SafeLoader))
@@ -26,11 +27,12 @@ config = edict(yaml.load(open('config.yml'), Loader=yaml.SafeLoader))
 if not os.path.exists(config.directories.exps):
     os.mkdir(config.directories.exps)
 
-trial = 'trial_5_classification_higher_weight_for_positive_30'
+trial = 'trial_6_SVM'
 exp_dir = os.path.join(config.directories.exps, trial)
 if not os.path.isdir(exp_dir):
     os.mkdir(exp_dir)
 
+BUILD_NEURAL_NET = False
 FOLD = '1'
 TRAIN = True
 EVAL = False
@@ -88,11 +90,12 @@ class Solver(object):
         self.model_save_step = config.train.model_save_step
 
         # Build the model
-        self.build_model()
-        if EVAL or LOAD_MODEL:
-            self.restore_model()
-        if self.use_tensorboard:
-            self.build_tensorboard()
+        if BUILD_NEURAL_NET:
+            self.build_model()
+            if EVAL or LOAD_MODEL:
+                self.restore_model()
+            if self.use_tensorboard:
+                self.build_tensorboard()
 
     def build_model(self):
         """Build the model"""
@@ -333,6 +336,72 @@ class Solver(object):
                 # except:
                 #     """"""
 
+    def train_svm(self):
+        iterations = 0
+        """Get train/test"""
+        train, val = self.get_train_test()
+        train_files_list = train['positive'] + train['negative']
+        val_files_list = val['positive'] + val['negative']
+        # self.triplet_loss = nn.TripletMarginWithDistanceLoss(distance_function=F.cosine_similarity)
+        self.crossent_loss = nn.CrossEntropyLoss(reduction='none')
+        for epoch in range(config.train.num_epochs):
+            """Make dataloader"""
+            train_data = Dataset(config=config, params={'files': train_files_list,
+                                                        'mode': 'train', 'triplet': False,
+                                                        'files_dict': train})
+            train_gen = data.DataLoader(train_data, batch_size=len(train_files_list),
+                                        shuffle=True, collate_fn=train_data.collate, drop_last=True)
+            val_data = Dataset(config=config, params={'files': val_files_list,
+                                                      'mode': 'train', 'triplet': False,
+                                                      'files_dict': val})
+            val_gen = data.DataLoader(val_data, batch_size=1,
+                                        shuffle=True, collate_fn=val_data.collate, drop_last=True)
+
+            for batch_number, features in enumerate(train_gen):
+                # try:
+                    feature = features['features']
+                    labels = features['labels']
+                    scalers = features['scalers']
+                    files = features['files']
+
+                    feature = feature.detach().cpu().numpy()
+                    labels = labels.detach().cpu().numpy()
+                    scalers = scalers.detach().cpu().numpy()
+
+                    clf = svm.SVC()
+                    clf.fit(X=feature, y=labels, sample_weight=scalers)
+
+                    iterations += 1
+            TP = 0
+            TN = 0
+            FP = 0
+            FN = 0
+            for batch_number, features in tqdm(enumerate(val_gen)):
+                feature = features['features']
+                labels = features['labels']
+                scalers = features['scalers']
+                files = features['files']
+
+                feature = feature.detach().cpu().numpy()
+                labels = labels.detach().cpu().numpy()[0]
+
+                value = clf.predict(feature)[0]
+                if labels == 0:
+                    if value == 0:
+                        TP += 1
+                    elif value == 1:
+                        FN += 1
+                elif labels == 1:
+                    if value == 1:
+                        TN += 1
+                    elif value == 0:
+                        FP += 1
+            Prec = TP / (TP + FP)
+            Rec = TP / (TP + FN)
+            stop = None
+                # except:
+                #     """"""
+
 
     def eval(self):
 
@@ -483,7 +552,8 @@ class Solver(object):
 def main():
     solver = Solver()
     if TRAIN:
-        solver.train_classifier()
+        # solver.train_classifier()
+        solver.train_svm()
     if EVAL:
         solver.eval()
     if PERFORMANCE:
