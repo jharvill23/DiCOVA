@@ -12,10 +12,10 @@ class FreeSound(object):
 
     def __init__(self, config):
         self.config = config
-        self.root = config.directories.freesound_root
+        self.root = self.config.directories.freesound_root
         self.metadata = self.get_metadata()
         self.partition = self.get_partition()
-        self.featdir = config.directories.freesound_logspect_feats
+        self.featdir = self.config.directories.freesound_logspect_feats
         self.train_wavs = os.path.join(self.root, 'FSDKaggle2018.audio_train')
         self.test_wavs = os.path.join(self.root, 'FSDKaggle2018.audio_test')
 

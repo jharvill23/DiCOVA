@@ -20,6 +20,7 @@ import concurrent.futures
 import json
 import pandas as pd
 from config import get_config
+import soundfile as sf
 
 config = get_config.get()
 
@@ -194,6 +195,16 @@ def get_class2index_and_index2class():
     class2index = {'p': 0, 'n': 1}
     index2class = {0: 'p', 1: 'n'}
     return class2index, index2class
+
+def flac2wav(filelist, dump_dir):
+    for file in tqdm(filelist):
+        audio, sr = librosa.core.load(file, sr=44100)
+        """Save the data as a wav file instead of flac"""
+        name = file.split('/')[-1][:-5] + '.wav'
+        dump_path = os.path.join(dump_dir, name)
+        x = np.round(audio * 32767)
+        x = x.astype('int16')
+        sf.write(dump_path, x, sr, subtype='PCM_16')
 
 def process(data):
     file = data['file']
