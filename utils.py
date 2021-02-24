@@ -19,9 +19,48 @@ import multiprocessing
 import concurrent.futures
 import json
 import pandas as pd
+from config import get_config
 
+config = get_config.get()
 
-config = edict(yaml.load(open('config.yml'), Loader=yaml.SafeLoader))
+class Mel_log_spect(object):
+    def __init__(self):
+        self.nfft = config.data.fftl
+        self.num_mels = config.data.num_mels
+        self.hop_length = config.data.hop_length
+        self.top_db = config.data.top_db
+        self.sr = config.data.sr
+
+    def feature_normalize(self, x):
+        log_min = np.min(x)
+        x = x - log_min
+        x = x / self.top_db
+        x = x.T
+        return x
+
+    def get_Mel_log_spect(self, y):
+        y = librosa.util.normalize(S=y)
+        spect = librosa.feature.melspectrogram(y=y, sr=self.sr, n_fft=self.nfft,
+                                               hop_length=self.hop_length, n_mels=self.num_mels)
+        log_spect = librosa.core.amplitude_to_db(spect, ref=1.0, top_db=self.top_db)
+        log_spect = self.feature_normalize(log_spect)
+        return log_spect
+
+    def norm_Mel_log_spect_to_amplitude(self, feature):
+        feature = feature * self.top_db
+        spect = librosa.core.db_to_amplitude(feature, ref=1.0)
+        return spect
+
+    def audio_from_spect(self, feature):
+        spect = self.norm_Mel_log_spect_to_amplitude(feature)
+        audio = librosa.feature.inverse.mel_to_audio(spect.T, sr=self.sr, n_fft=self.nfft, hop_length=self.hop_length)
+        return audio
+
+    def convert_and_write(self, load_path, write_path):
+        y, sr = librosa.core.load(path=load_path, sr=self.sr)
+        feature = self.get_Mel_log_spect(y, n_mels=self.num_mels)
+        audio = self.audio_from_spect(feature)
+        librosa.output.write_wav(write_path, y=audio, sr=self.sr, norm=True)
 
 def collect_files(directory):
     all_files = []
@@ -156,10 +195,34 @@ def get_class2index_and_index2class():
     index2class = {0: 'p', 1: 'n'}
     return class2index, index2class
 
+def process(data):
+    file = data['file']
+    dump_dir = data['dump_dir']
+    try:
+        audio, _ = librosa.core.load(file, sr=config.data.sr)
+        feature_processor = Mel_log_spect()
+        features = feature_processor.get_Mel_log_spect(audio)
+        dump_path = os.path.join(dump_dir, file.split('/')[-1][:-4] + '.pkl')
+        joblib.dump(features, dump_path)
+    except:
+        print("Had trouble processing file " + file + " ...")
+
+def get_features(filelist, dump_dir):
+    if not os.path.exists(dump_dir):
+        os.mkdir(dump_dir)
+    new_list = []
+    for file in filelist:
+        new_list.append({'file': file, 'dump_dir': dump_dir})
+    # process(new_list[0])
+    with concurrent.futures.ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+        for _ in tqdm(executor.map(process, new_list)):
+            """"""
+
+
 
 def main():
     """"""
-    files = get_dicova_partitions()
+    # files = get_dicova_partitions()
     # meta = dicova_metadata('/home/john/Documents/School/Spring_2021/DiCOVA/wavs/aBXnKRBt_cough.wav')
     # get_coswara_partition()
     # files = collect_files(config.directories.opensmile_feats)

@@ -3,11 +3,10 @@ import torch.nn.functional as F
 #import torch.autograd.function as Function
 #from torch.autograd import function as Function
 import torch
-from easydict import EasyDict as edict
-import yaml
+from config import get_config
 
 
-CONFIG = edict(yaml.load(open('config.yml'), Loader=yaml.SafeLoader))
+config = get_config.get()
 
 class CTCmodel(nn.Module):
     def __init__(self, config):
