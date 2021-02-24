@@ -123,3 +123,27 @@ class Classifier(nn.Module):
         x = F.tanh(x)
         x = self.full4(x)
         return x
+
+class PreTrainer(nn.Module):
+    def __init__(self, config):
+        super(PreTrainer, self).__init__()
+        self.config = config
+        self.num_mels = self.config.data.num_mels
+        self.hidden_size = self.config.pretraining.hidden_size
+        self.linear_hidden_size = self.config.pretraining.linear_hidden_size
+        self.encoder_num_layers = self.config.pretraining.encoder_num_layers
+        self.batch_first = self.config.pretraining.batch_first
+        self.dropout = self.config.pretraining.dropout
+        self.encoder_lstm_1 = nn.LSTM(input_size=self.num_mels, hidden_size=self.hidden_size,
+                             num_layers=self.encoder_num_layers, batch_first=self.batch_first,
+                             dropout=self.dropout, bidirectional=False)
+        self.full1 = nn.Linear(in_features=self.hidden_size,
+                               out_features=self.linear_hidden_size)
+        self.full2 = nn.Linear(in_features=self.linear_hidden_size, out_features=self.num_mels)
+
+    def forward(self, x):
+        x, _ = self.encoder_lstm_1(x)
+        x = self.full1(x)
+        x = F.tanh(x)
+        x = self.full2(x)
+        return x

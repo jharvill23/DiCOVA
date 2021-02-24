@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from config import get_config
 from dataSetCode import freesound
 from dataSetCode.freesound import Dataset
+import torch.nn.functional as F
 
 
 config = get_config.get()
@@ -27,7 +28,6 @@ exp_dir = os.path.join(config.directories.exps, trial)
 if not os.path.isdir(exp_dir):
     os.mkdir(exp_dir)
 
-FOLD = '1'
 TRAIN = True
 LOAD_MODEL = False
 
@@ -40,7 +40,7 @@ class Solver(object):
         self.config = config
 
         # Training configurations.
-        self.g_lr = self.config.model.lr
+        self.g_lr = self.config.pretraining.lr
         self.torch_type = torch.float32
 
         # Miscellaneous.
@@ -145,53 +145,21 @@ class Solver(object):
 
     def val_loss(self, val, iterations):
         val_loss = 0
-        TP = 0
-        TN = 0
-        FP = 0
-        FN = 0
         for batch_number, features in tqdm(enumerate(val)):
-            # try:
+            try:
                 feature = features['features']
-                labels = features['labels']
                 files = features['files']
-                scalers = features['scalers']
-                info = utils.dicova_metadata(files[0])  # batch size 1
                 self.G = self.G.eval()
-
                 predictions = self.G(feature)
-
-                loss = self.crossent_loss(predictions, labels)
-                loss = loss * scalers
+                input_length = feature.shape[1]
+                """Now we need to trim the input features for MSE error between output"""
+                feature = feature[:, self.config.pretraining.future_frames:, :]
+                predictions = predictions[:, 0: input_length - self.config.pretraining.future_frames, :]
+                loss = F.mse_loss(input=feature, target=predictions)
                 val_loss += loss.item()
-
-                predictions = np.squeeze(predictions.detach().cpu().numpy())
-                pred_value = self.index2class[np.argmax(predictions)]
-
-                if info['Covid_status'] == 'p':
-                    if pred_value == 'p':
-                        TP += 1
-                    elif pred_value == 'n':
-                        FN += 1
-                elif info['Covid_status'] == 'n':
-                    if pred_value == 'n':
-                        TN += 1
-                    elif pred_value == 'p':
-                        FP += 1
-            # except:
-            #     """"""
-        if TP + FP > 0:
-            Prec = TP / (TP + FP)
-        else:
-            Prec = 0
-        if TP + FN > 0:
-            Rec = TP / (TP + FN)
-        else:
-            Rec = 0
-
-        acc = (TP + TN)/(TP + TN + FP + FN)
-
-        return val_loss, Prec, Rec, acc
-
+            except:
+                """"""
+        return val_loss
 
     def train(self):
         iterations = 0
@@ -203,43 +171,36 @@ class Solver(object):
             train_gen = data.DataLoader(train_data, batch_size=self.config.train.batch_size,
                                         shuffle=True, collate_fn=train_data.collate, drop_last=True)
             val_data = Dataset(config=self.config, params={'files': val, 'mode': 'train'})
-            val_gen = data.DataLoader(val_data, batch_size=1,
+            val_gen = data.DataLoader(val_data, batch_size=20,
                                         shuffle=True, collate_fn=val_data.collate, drop_last=True)
 
             for batch_number, features in enumerate(train_gen):
-                # try:
+                try:
                     feature = features['features']
                     files = features['files']
                     self.G = self.G.train()
-
                     predictions = self.G(feature)
-
-                    """Now we need to """
-
-                    loss = self.crossent_loss(predictions, labels)
-                    """Multiply loss of positive labels by """
-                    loss = loss * scalers
+                    input_length = feature.shape[1]
+                    """Now we need to trim the input features for MSE error between output"""
+                    feature = feature[:, self.config.pretraining.future_frames:, :]
+                    predictions = predictions[:, 0: input_length-self.config.pretraining.future_frames, :]
+                    loss = F.mse_loss(input=feature, target=predictions)
                     # Backward and optimize.
                     self.reset_grad()
-                    loss.sum().backward()
                     self.g_optimizer.step()
 
                     if iterations % self.log_step == 0:
-                        print(str(iterations) + ', loss: ' + str(loss.sum().item()))
+                        normalized_loss = loss.item()/input_length
+                        print(str(iterations) + ', loss: ' + str(normalized_loss))
                         if self.use_tensorboard:
-                            # self.logger.scalar_summary('loss', loss.sum().item(), iterations)
-                            self.logger.add_scalar('loss', loss.sum().item(), iterations)
+                            self.logger.add_scalar('loss', normalized_loss, iterations)
 
                     if iterations % self.model_save_step == 0:
                         """Calculate validation loss"""
-                        val_loss, Prec, Rec, acc = self.val_loss(val=val_gen, iterations=iterations)
+                        val_loss = self.val_loss(val=val_gen, iterations=iterations)
                         print(str(iterations) + ', val_loss: ' + str(val_loss))
-                        print(str(iterations) + ', accuracy: ' + str(acc))
                         if self.use_tensorboard:
                             self.logger.add_scalar('val_loss', val_loss, iterations)
-                            self.logger.add_scalar('Prec', Prec, iterations)
-                            self.logger.add_scalar('Rec', Rec, iterations)
-                            self.logger.add_scalar('Accuracy', acc, iterations)
                     """Save model checkpoints."""
                     if iterations % self.model_save_step == 0:
                         G_path = os.path.join(self.model_save_dir, '{}-G.ckpt'.format(iterations))
@@ -248,9 +209,8 @@ class Solver(object):
                         print('Saved model checkpoints into {}...'.format(self.model_save_dir))
 
                     iterations += 1
-                # except:
-                #     """"""
-
+                except:
+                    """"""
 
     def to_gpu(self, tensor):
         tensor = tensor.to(self.torch_type)
