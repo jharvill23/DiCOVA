@@ -23,7 +23,7 @@ config = get_config.get()
 if not os.path.exists(config.directories.exps):
     os.mkdir(config.directories.exps)
 
-trial = 'pretraining_trial_1'
+trial = 'pretraining_trial_2'
 exp_dir = os.path.join(config.directories.exps, trial)
 if not os.path.isdir(exp_dir):
     os.mkdir(exp_dir)
@@ -150,16 +150,28 @@ class Solver(object):
                 feature = features['features']
                 files = features['files']
                 self.G = self.G.eval()
-                predictions = self.G(feature)
+                predictions, _ = self.G(feature)
                 input_length = feature.shape[1]
                 """Now we need to trim the input features for MSE error between output"""
                 feature = feature[:, self.config.pretraining.future_frames:, :]
                 predictions = predictions[:, 0: input_length - self.config.pretraining.future_frames, :]
                 loss = F.mse_loss(input=feature, target=predictions)
                 val_loss += loss.item()
+                if batch_number == 0:
+                    self.save_image(prediction=predictions[0], ground_truth=feature[0], iterations=iterations)
             except:
                 """"""
         return val_loss
+
+    def save_image(self, prediction, ground_truth, iterations):
+        prediction = prediction.detach().cpu().numpy()
+        ground_truth = ground_truth.detach().cpu().numpy()
+        plt.subplot(211)
+        plt.imshow(prediction.T)
+        plt.subplot(212)
+        plt.imshow(ground_truth.T)
+        plt.savefig(os.path.join(self.images_dir, str(iterations) + '.png'))
+        plt.close()
 
     def train(self):
         iterations = 0
@@ -175,11 +187,11 @@ class Solver(object):
                                         shuffle=True, collate_fn=val_data.collate, drop_last=True)
 
             for batch_number, features in enumerate(train_gen):
-                try:
+                # try:
                     feature = features['features']
                     files = features['files']
                     self.G = self.G.train()
-                    predictions = self.G(feature)
+                    predictions, _ = self.G(feature)
                     input_length = feature.shape[1]
                     """Now we need to trim the input features for MSE error between output"""
                     feature = feature[:, self.config.pretraining.future_frames:, :]
@@ -187,6 +199,7 @@ class Solver(object):
                     loss = F.mse_loss(input=feature, target=predictions)
                     # Backward and optimize.
                     self.reset_grad()
+                    loss.backward()
                     self.g_optimizer.step()
 
                     if iterations % self.log_step == 0:
@@ -194,6 +207,7 @@ class Solver(object):
                         print(str(iterations) + ', loss: ' + str(normalized_loss))
                         if self.use_tensorboard:
                             self.logger.add_scalar('loss', normalized_loss, iterations)
+                        self.save_image(prediction=predictions[0], ground_truth=feature[0], iterations=iterations)
 
                     if iterations % self.model_save_step == 0:
                         """Calculate validation loss"""
@@ -209,8 +223,8 @@ class Solver(object):
                         print('Saved model checkpoints into {}...'.format(self.model_save_dir))
 
                     iterations += 1
-                except:
-                    """"""
+                # except:
+                #     """"""
 
     def to_gpu(self, tensor):
         tensor = tensor.to(self.torch_type)

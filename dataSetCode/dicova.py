@@ -7,6 +7,7 @@ import joblib
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from utils import collect_files
+import numpy as np
 
 class DiCOVA(object):
     """Solver"""
@@ -119,6 +120,8 @@ class Dataset(object):
         'Initialization'
         self.list_IDs = params['files']
         self.mode = params["mode"]
+        self.data_object = params['data_object']
+        self.class2index, self.index2class = utils.get_class2index_and_index2class()
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -127,8 +130,11 @@ class Dataset(object):
     def __getitem__(self, index):
         'Get the data item'
         file = self.list_IDs[index]
+        metadata = self.data_object.get_file_metadata(file)
+        label = self.class2index[metadata['Covid_status']]
+        label = self.to_GPU(torch.from_numpy(np.asarray(label)))
         feats = self.to_GPU(torch.from_numpy(joblib.load(file)))
-        return file, feats
+        return file, feats, label
 
     def to_GPU(self, tensor):
         if self.config.use_gpu == True:
@@ -140,8 +146,10 @@ class Dataset(object):
     def collate(self, data):
         files = [item[0] for item in data]
         spects = [item[1] for item in data]
+        labels = [item[2] for item in data]
         spects = pad_sequence(spects, batch_first=True, padding_value=0)
-        return {'files': files, 'features': spects}
+        labels = torch.stack([x for x in labels])
+        return {'files': files, 'features': spects, 'labels': labels}
 
 
 def main():
