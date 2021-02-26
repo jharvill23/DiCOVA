@@ -17,6 +17,7 @@ from dataSetCode import dicova
 from dataSetCode.dicova import Dataset
 import torch.nn.functional as F
 import copy
+from scipy.special import softmax
 
 
 config = get_config.get()
@@ -24,7 +25,7 @@ config = get_config.get()
 if not os.path.exists(config.directories.exps):
     os.mkdir(config.directories.exps)
 
-trial = 'finetuning_trial_1'
+trial = 'finetuning_trial_5_with_scaling_and_auc_plots'
 exp_dir = os.path.join(config.directories.exps, trial)
 if not os.path.isdir(exp_dir):
     os.mkdir(exp_dir)
@@ -40,6 +41,7 @@ class Solver(object):
         """Initialize configurations."""
 
         self.config = config
+        self.val_folds = os.path.join('val_folds', 'fold_' + FOLD, 'val_labels')
 
         # Training configurations.
         self.g_lr = self.config.post_pretraining_classifier.lr
@@ -56,6 +58,7 @@ class Solver(object):
         self.train_data_dir = self.config.directories.features
         self.predict_dir = os.path.join(exp_dir, 'predictions')
         self.images_dir = os.path.join(exp_dir, 'images')
+        self.val_scores_dir = os.path.join(exp_dir, 'val_scores')
 
         if not os.path.isdir(self.log_dir):
             os.mkdir(self.log_dir)
@@ -65,6 +68,9 @@ class Solver(object):
             os.mkdir(self.predict_dir)
         if not os.path.isdir(self.images_dir):
             os.mkdir(self.images_dir)
+        if not os.path.isdir(self.val_scores_dir):
+            os.mkdir(self.val_scores_dir)
+
 
         # if not os.path.exists('dicova_partitions.pkl'):
         #     utils.get_dicova_partitions()
@@ -164,22 +170,35 @@ class Solver(object):
         TN = 0
         FP = 0
         FN = 0
+        ground_truth = []
+        pred_scores = []
         for batch_number, features in tqdm(enumerate(val)):
             try:
                 feature = features['features']
                 files = features['files']
                 labels = features['labels']
-                self.G = self.G.train()
+                scalers = features['scalers']
+                self.G = self.G.eval()
                 _, intermediate = self.pretrained(feature)
                 predictions = self.G(intermediate)
                 loss = self.crossent_loss(predictions, labels)
+                """Multiply loss of positive labels by """
+                loss = loss * scalers
                 val_loss += loss.sum().item()
 
                 predictions = np.squeeze(predictions.detach().cpu().numpy())
                 max_preds = np.argmax(predictions, axis=1)
+                scores = softmax(predictions, axis=1)
                 pred_value = [self.index2class[x] for x in max_preds]
 
                 info = [self.training_data.get_file_metadata(x) for x in files]
+
+                for i, file in enumerate(files):
+                    filekey = file.split('/')[-1][:-4]
+                    gt = info[i]['Covid_status']
+                    score = scores[i, self.class2index['p']]
+                    ground_truth.append(filekey + ' ' + gt)
+                    pred_scores.append(filekey + ' ' + str(score))
 
                 for i, entry in enumerate(info):
                     if entry['Covid_status'] == 'p':
@@ -195,6 +214,25 @@ class Solver(object):
 
             except:
                 """"""
+        """Sort the lists in alphabetical order"""
+        ground_truth.sort()
+        pred_scores.sort()
+
+        """Write the files"""
+        gt_path = os.path.join(self.val_scores_dir, 'val_labels_' + str(iterations))
+        score_path = os.path.join(self.val_scores_dir, 'scores_' + str(iterations))
+
+        for path in [gt_path, score_path]:
+            with open(path, 'w') as f:
+                if path == gt_path:
+                    for item in ground_truth:
+                        f.write("%s\n" % item)
+                elif path == score_path:
+                    for item in pred_scores:
+                        f.write("%s\n" % item)
+        out_file_path = os.path.join(self.val_scores_dir, 'outfile_' + str(iterations) + '.pkl')
+        utils.scoring(refs=gt_path, sys_outs=score_path, out_file=out_file_path)
+        auc = utils.summary(folname=self.val_scores_dir, scores=out_file_path, iterations=iterations)
 
         if TP + FP > 0:
             Prec = TP / (TP + FP)
@@ -207,7 +245,7 @@ class Solver(object):
 
         acc = (TP + TN) / (TP + TN + FP + FN)
 
-        return val_loss, Prec, Rec, acc
+        return val_loss, Prec, Rec, acc, auc
 
     def train(self):
         iterations = 0
@@ -236,10 +274,13 @@ class Solver(object):
                     feature = features['features']
                     files = features['files']
                     labels = features['labels']
+                    scalers = features['scalers']
                     self.G = self.G.train()
                     _, intermediate = self.pretrained(feature)
                     predictions = self.G(intermediate)
                     loss = self.crossent_loss(predictions, labels)
+                    """Multiply loss of positive labels by """
+                    loss = loss * scalers
                     # Backward and optimize.
                     self.reset_grad()
                     loss.sum().backward()
@@ -253,13 +294,14 @@ class Solver(object):
 
                     if iterations % self.model_save_step == 0:
                         """Calculate validation loss"""
-                        val_loss, Prec, Rec, acc = self.val_loss(val=val_gen, iterations=iterations)
+                        val_loss, Prec, Rec, acc, auc = self.val_loss(val=val_gen, iterations=iterations)
                         print(str(iterations) + ', val_loss: ' + str(val_loss))
                         if self.use_tensorboard:
                             self.logger.add_scalar('val_loss', val_loss, iterations)
                             self.logger.add_scalar('Prec', Prec, iterations)
                             self.logger.add_scalar('Rec', Rec, iterations)
                             self.logger.add_scalar('Accuracy', acc, iterations)
+                            self.logger.add_scalar('AUC', auc, iterations)
                     """Save model checkpoints."""
                     if iterations % self.model_save_step == 0:
                         G_path = os.path.join(self.model_save_dir, '{}-G.ckpt'.format(iterations))

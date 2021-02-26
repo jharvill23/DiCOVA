@@ -33,7 +33,7 @@ model:
 
 train:
     log_step: 100
-    model_save_step: 2000
+    model_save_step: 500
     num_epochs: 30000
     batch_size: 3
 
@@ -54,3 +54,4 @@ post_pretraining_classifier:
     batch_first: true
     dropout: 0.1
     bidirectional: true
+    incorrect_scaler: 15

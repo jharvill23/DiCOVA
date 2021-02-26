@@ -122,6 +122,7 @@ class Dataset(object):
         self.mode = params["mode"]
         self.data_object = params['data_object']
         self.class2index, self.index2class = utils.get_class2index_and_index2class()
+        self.incorrect_scaler = self.config.post_pretraining_classifier.incorrect_scaler
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -134,7 +135,15 @@ class Dataset(object):
         label = self.class2index[metadata['Covid_status']]
         label = self.to_GPU(torch.from_numpy(np.asarray(label)))
         feats = self.to_GPU(torch.from_numpy(joblib.load(file)))
-        return file, feats, label
+        """Get incorrect_scaler value"""
+        if metadata['Covid_status'] == 'p':
+            scaler = self.incorrect_scaler
+        else:
+            scaler = 1
+        scaler = self.to_GPU(torch.from_numpy(np.asarray(scaler)))
+        scaler = scaler.to(torch.float32)
+        scaler.requires_grad = True
+        return file, feats, label, scaler
 
     def to_GPU(self, tensor):
         if self.config.use_gpu == True:
@@ -147,9 +156,11 @@ class Dataset(object):
         files = [item[0] for item in data]
         spects = [item[1] for item in data]
         labels = [item[2] for item in data]
+        scalers = [item[3] for item in data]
         spects = pad_sequence(spects, batch_first=True, padding_value=0)
         labels = torch.stack([x for x in labels])
-        return {'files': files, 'features': spects, 'labels': labels}
+        scalers = torch.stack([x for x in scalers])
+        return {'files': files, 'features': spects, 'labels': labels, 'scalers': scalers}
 
 
 def main():
