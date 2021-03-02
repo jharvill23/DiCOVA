@@ -25,7 +25,7 @@ config = get_config.get()
 if not os.path.exists(config.directories.exps):
     os.mkdir(config.directories.exps)
 
-trial = 'finetuning_trial_5_with_scaling_and_auc_plots'
+trial = 'finetuning_trial_9_with_scaling_and_auc_plots_10_ff_pretraining_coughvid_specaug'
 exp_dir = os.path.join(config.directories.exps, trial)
 if not os.path.isdir(exp_dir):
     os.mkdir(exp_dir)
@@ -97,10 +97,12 @@ class Solver(object):
     def build_model(self):
         """Build the model"""
         pretrain_config = copy.deepcopy(self.config)
-        pretrain_config.model.name = 'PreTrainer'
+        pretrain_config.model.name = 'PreTrainer2'
         """Load the weights"""
         self.pretrained = model.CTCmodel(pretrain_config)
-        pretrain_checkpoint = self._load('./exps/pretraining_trial_2/models/20000-G.ckpt')
+        # pretrain_checkpoint = self._load('./exps/pretraining_trial_2/models/20000-G.ckpt')
+        # pretrain_checkpoint = self._load('./exps/pretraining_trial_3_10_future_frames/models/140000-G.ckpt')
+        pretrain_checkpoint = self._load('./exps/pretraining_trial_4_coughvid_10_future_frames/models/19500-G.ckpt')
         self.pretrained.load_state_dict(pretrain_checkpoint['model'])
         """Freeze pretrainer"""
         for param in self.pretrained.parameters():
@@ -258,14 +260,16 @@ class Solver(object):
             """Make dataloader"""
             train_data = Dataset(config=config, params={'files': train_files_list,
                                                         'mode': 'train',
-                                                        'data_object': self.training_data})
+                                                        'data_object': self.training_data,
+                                                        'specaugment': self.config.train.specaugment})
             train_gen = data.DataLoader(train_data, batch_size=config.train.batch_size,
                                         shuffle=True, collate_fn=train_data.collate, drop_last=True)
             self.index2class = train_data.index2class
             self.class2index = train_data.class2index
             val_data = Dataset(config=config, params={'files': val_files_list,
                                                       'mode': 'train',
-                                                      'data_object': self.training_data})
+                                                      'data_object': self.training_data,
+                                                      'specaugment': False})
             val_gen = data.DataLoader(val_data, batch_size=config.train.batch_size,
                                       shuffle=True, collate_fn=val_data.collate, drop_last=True)
 

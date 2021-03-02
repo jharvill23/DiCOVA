@@ -13,8 +13,8 @@ import json
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
 from config import get_config
-from dataSetCode import freesound
-from dataSetCode.freesound import Dataset
+from dataSetCode import coughvid
+from dataSetCode.coughvid import Dataset
 import torch.nn.functional as F
 
 
@@ -23,7 +23,7 @@ config = get_config.get()
 if not os.path.exists(config.directories.exps):
     os.mkdir(config.directories.exps)
 
-trial = 'pretraining_trial_2'
+trial = 'pretraining_trial_4_coughvid_10_future_frames'
 exp_dir = os.path.join(config.directories.exps, trial)
 if not os.path.isdir(exp_dir):
     os.mkdir(exp_dir)
@@ -68,7 +68,8 @@ class Solver(object):
             utils.get_dicova_partitions()
 
         """Training Data"""
-        self.training_data = freesound.FreeSound(config=self.config)
+        self.training_data = coughvid.COUGHVID(config=self.config)
+        self.training_data.get_partition()
 
         """Partition file"""
         if TRAIN:
@@ -137,10 +138,10 @@ class Solver(object):
         self.g_optimizer.zero_grad()
 
     def get_train_test(self):
-        self.training_data.feature_path_partition()
-        partition = self.training_data.feat_partition
-        train_files = partition['train']
-        val_files = partition['test']
+        # self.training_data.feature_path_partition()
+        # partition = self.training_data.feat_partition
+        train_files = self.training_data.partition['train']
+        val_files = self.training_data.partition['test']
         return train_files, val_files
 
     def val_loss(self, val, iterations):
@@ -179,15 +180,19 @@ class Solver(object):
         train, val = self.get_train_test()
         for epoch in range(self.config.train.num_epochs):
             """Make dataloader"""
-            train_data = Dataset(config=self.config, params={'files': train, 'mode': 'train'})
+            train_data = Dataset(config=self.config, params={'files': train, 'mode': 'train',
+                                                             'data_object': self.training_data,
+                                                             'specaugment': False})
             train_gen = data.DataLoader(train_data, batch_size=self.config.train.batch_size,
                                         shuffle=True, collate_fn=train_data.collate, drop_last=True)
-            val_data = Dataset(config=self.config, params={'files': val, 'mode': 'train'})
+            val_data = Dataset(config=self.config, params={'files': val, 'mode': 'train',
+                                                            'data_object': self.training_data,
+                                                            'specaugment': False})
             val_gen = data.DataLoader(val_data, batch_size=20,
                                         shuffle=True, collate_fn=val_data.collate, drop_last=True)
 
             for batch_number, features in enumerate(train_gen):
-                # try:
+                try:
                     feature = features['features']
                     files = features['files']
                     self.G = self.G.train()
@@ -223,8 +228,8 @@ class Solver(object):
                         print('Saved model checkpoints into {}...'.format(self.model_save_dir))
 
                     iterations += 1
-                # except:
-                #     """"""
+                except:
+                    """"""
 
     def to_gpu(self, tensor):
         tensor = tensor.to(self.torch_type)

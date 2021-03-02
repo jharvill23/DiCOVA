@@ -8,6 +8,10 @@ import torch
 from torch.nn.utils.rnn import pad_sequence
 from utils import collect_files
 import numpy as np
+import espnet
+import espnet.transform as trans
+import espnet.transform.spec_augment as SPEC
+import matplotlib.pyplot as plt
 
 class DiCOVA(object):
     """Solver"""
@@ -123,6 +127,7 @@ class Dataset(object):
         self.data_object = params['data_object']
         self.class2index, self.index2class = utils.get_class2index_and_index2class()
         self.incorrect_scaler = self.config.post_pretraining_classifier.incorrect_scaler
+        self.specaugment = params['specaugment']
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -134,7 +139,22 @@ class Dataset(object):
         metadata = self.data_object.get_file_metadata(file)
         label = self.class2index[metadata['Covid_status']]
         label = self.to_GPU(torch.from_numpy(np.asarray(label)))
-        feats = self.to_GPU(torch.from_numpy(joblib.load(file)))
+
+        if self.specaugment:
+            feats = joblib.load(file)
+            time_width = round(feats.shape[0]*0.1)
+            aug_feats = SPEC.spec_augment(feats, resize_mode='PIL', max_time_warp=80,
+                                                                   max_freq_width=20, n_freq_mask=1,
+                                                                   max_time_width=time_width, n_time_mask=2,
+                                                                   inplace=False, replace_with_zero=True)
+            # plt.subplot(211)
+            # plt.imshow(feats.T)
+            # plt.subplot(212)
+            # plt.imshow(aug_feats.T)
+            # plt.show()
+            feats = self.to_GPU(torch.from_numpy(aug_feats))
+        else:
+            feats = self.to_GPU(torch.from_numpy(joblib.load(file)))
         """Get incorrect_scaler value"""
         if metadata['Covid_status'] == 'p':
             scaler = self.incorrect_scaler

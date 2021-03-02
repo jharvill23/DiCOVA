@@ -216,6 +216,8 @@ def process(data):
         audio, _ = librosa.core.load(file, sr=config.data.sr)
         feature_processor = Mel_log_spect()
         features = feature_processor.get_Mel_log_spect(audio)
+        # plt.imshow(features.T)
+        # plt.show()
         dump_path = os.path.join(dump_dir, file.split('/')[-1][:-4] + '.pkl')
         joblib.dump(features, dump_path)
     except:

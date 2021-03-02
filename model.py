@@ -149,11 +149,41 @@ class PreTrainer(nn.Module):
         x = self.full2(x)
         return x, intermediate_state
 
+class PreTrainer2(nn.Module):
+    def __init__(self, config):
+        super(PreTrainer2, self).__init__()
+        self.config = config
+        self.num_mels = self.config.data.num_mels
+        self.hidden_size = self.config.pretraining2.hidden_size
+        self.linear_hidden_size = self.config.pretraining2.linear_hidden_size
+        self.encoder1_num_layers = self.config.pretraining2.encoder1_num_layers
+        self.encoder2_num_layers = self.config.pretraining2.encoder2_num_layers
+        self.batch_first = self.config.pretraining2.batch_first
+        self.dropout = self.config.pretraining.dropout
+        self.encoder_lstm_1 = nn.LSTM(input_size=self.num_mels, hidden_size=self.hidden_size,
+                             num_layers=self.encoder1_num_layers, batch_first=self.batch_first,
+                             dropout=self.dropout, bidirectional=False)
+        self.encoder_lstm_2 = nn.LSTM(input_size=self.hidden_size, hidden_size=self.hidden_size,
+                                      num_layers=self.encoder2_num_layers, batch_first=self.batch_first,
+                                      dropout=self.dropout, bidirectional=False)
+        self.full1 = nn.Linear(in_features=self.hidden_size,
+                               out_features=self.linear_hidden_size)
+        self.full2 = nn.Linear(in_features=self.linear_hidden_size, out_features=self.num_mels)
+
+    def forward(self, x):
+        x, _ = self.encoder_lstm_1(x)
+        intermediate_state = x  # take the intermediate layer after two layers of LSTM
+        x, _ = self.encoder_lstm_2(x)
+        x = self.full1(x)
+        x = F.tanh(x)
+        x = self.full2(x)
+        return x, intermediate_state
+
 class PostPreTrainClassifier(nn.Module):
     def __init__(self, config):
         super(PostPreTrainClassifier, self).__init__()
         self.config = config
-        self.input_size = self.config.pretraining.linear_hidden_size
+        self.input_size = self.config.pretraining2.hidden_size
         self.hidden_size = self.config.post_pretraining_classifier.hidden_size
         self.linear_hidden_size = self.config.post_pretraining_classifier.linear_hidden_size
         self.encoder_num_layers = self.config.post_pretraining_classifier.encoder_num_layers
