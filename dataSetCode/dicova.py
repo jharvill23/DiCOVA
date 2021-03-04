@@ -12,6 +12,7 @@ import espnet
 import espnet.transform as trans
 import espnet.transform.spec_augment as SPEC
 import matplotlib.pyplot as plt
+import random
 
 class DiCOVA(object):
     """Solver"""
@@ -114,6 +115,18 @@ class DiCOVA(object):
         new_filelist = utils.collect_files(self.config.directories.dicova_wavs)
         utils.get_features(filelist=new_filelist, dump_dir=self.featdir)
 
+    def get_test_files_and_feats(self):
+        root = self.config.directories.dicova_test_root
+        audio_path = os.path.join(root, 'AUDIO')
+        files = utils.collect_files(audio_path)
+        dump_dir = self.config.directories.dicova_test_wavs
+        if not os.path.isdir(dump_dir):
+            os.mkdir(dump_dir)
+        utils.flac2wav(filelist=files, dump_dir=dump_dir)
+        new_filelist = utils.collect_files(self.config.directories.dicova_test_wavs)
+        dump_dir =self.config.directories.dicova_test_logspect_feats
+        utils.get_features(filelist=new_filelist, dump_dir=dump_dir)
+
 class Dataset(object):
     """Solver"""
 
@@ -128,6 +141,7 @@ class Dataset(object):
         self.class2index, self.index2class = utils.get_class2index_and_index2class()
         self.incorrect_scaler = self.config.post_pretraining_classifier.incorrect_scaler
         self.specaugment = params['specaugment']
+        self.specaug_probability = self.config.train.specaug_probability
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -142,17 +156,21 @@ class Dataset(object):
 
         if self.specaugment:
             feats = joblib.load(file)
-            time_width = round(feats.shape[0]*0.1)
-            aug_feats = SPEC.spec_augment(feats, resize_mode='PIL', max_time_warp=80,
-                                                                   max_freq_width=20, n_freq_mask=1,
-                                                                   max_time_width=time_width, n_time_mask=2,
-                                                                   inplace=False, replace_with_zero=True)
-            # plt.subplot(211)
-            # plt.imshow(feats.T)
-            # plt.subplot(212)
-            # plt.imshow(aug_feats.T)
-            # plt.show()
-            feats = self.to_GPU(torch.from_numpy(aug_feats))
+            x = random.uniform(0, 1)
+            if x <= self.specaug_probability:
+                time_width = round(feats.shape[0]*0.1)
+                aug_feats = SPEC.spec_augment(feats, resize_mode='PIL', max_time_warp=80,
+                                                                       max_freq_width=20, n_freq_mask=1,
+                                                                       max_time_width=time_width, n_time_mask=2,
+                                                                       inplace=False, replace_with_zero=True)
+                # plt.subplot(211)
+                # plt.imshow(feats.T)
+                # plt.subplot(212)
+                # plt.imshow(aug_feats.T)
+                # plt.show()
+                feats = self.to_GPU(torch.from_numpy(aug_feats))
+            else:
+                feats = self.to_GPU(torch.from_numpy(feats))
         else:
             feats = self.to_GPU(torch.from_numpy(joblib.load(file)))
         """Get incorrect_scaler value"""
@@ -186,7 +204,8 @@ class Dataset(object):
 def main():
     config = get_config.get()
     dicova = DiCOVA(config=config)
-    dicova.get_features()
+    # dicova.get_features()
+    dicova.get_test_files_and_feats()
 
 if __name__ == "__main__":
     main()

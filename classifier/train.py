@@ -18,6 +18,7 @@ from dataSetCode.dicova import Dataset
 import torch.nn.functional as F
 import copy
 from scipy.special import softmax
+import argparse
 
 
 config = get_config.get()
@@ -25,23 +26,19 @@ config = get_config.get()
 if not os.path.exists(config.directories.exps):
     os.mkdir(config.directories.exps)
 
-trial = 'finetuning_trial_9_with_scaling_and_auc_plots_10_ff_pretraining_coughvid_specaug'
-exp_dir = os.path.join(config.directories.exps, trial)
-if not os.path.isdir(exp_dir):
-    os.mkdir(exp_dir)
-
-FOLD = '1'
-TRAIN = True
-LOAD_MODEL = False
+# FOLD = '1'
+# TRAIN = True
+# LOAD_MODEL = False
 
 class Solver(object):
     """Solver"""
 
-    def __init__(self, config):
+    def __init__(self, config, training_args):
         """Initialize configurations."""
 
         self.config = config
-        self.val_folds = os.path.join('val_folds', 'fold_' + FOLD, 'val_labels')
+        self.fold = training_args.FOLD
+        self.val_folds = os.path.join('val_folds', 'fold_' + self.fold, 'val_labels')
 
         # Training configurations.
         self.g_lr = self.config.post_pretraining_classifier.lr
@@ -53,12 +50,17 @@ class Solver(object):
         self.device = torch.device('cuda:{}'.format(0) if self.use_cuda else 'cpu')
 
         # Directories.
-        self.log_dir = os.path.join(exp_dir, 'logs')
-        self.model_save_dir = os.path.join(exp_dir, 'models')
+        # trial = 'finetuning_trial_10_with_scaling_and_auc_plots_10_ff_pretraining_coughvid_specaug_prob_0dot7'
+        trial = training_args.TRIAL
+        self.exp_dir = os.path.join(self.config.directories.exps, trial)
+        if not os.path.isdir(self.exp_dir):
+            os.mkdir(self.exp_dir)
+        self.log_dir = os.path.join(self.exp_dir, 'logs')
+        self.model_save_dir = os.path.join(self.exp_dir, 'models')
         self.train_data_dir = self.config.directories.features
-        self.predict_dir = os.path.join(exp_dir, 'predictions')
-        self.images_dir = os.path.join(exp_dir, 'images')
-        self.val_scores_dir = os.path.join(exp_dir, 'val_scores')
+        self.predict_dir = os.path.join(self.exp_dir, 'predictions')
+        self.images_dir = os.path.join(self.exp_dir, 'images')
+        self.val_scores_dir = os.path.join(self.exp_dir, 'val_scores')
 
         if not os.path.isdir(self.log_dir):
             os.mkdir(self.log_dir)
@@ -79,9 +81,9 @@ class Solver(object):
         self.training_data = dicova.DiCOVA(config=self.config)
 
         """Partition file"""
-        if TRAIN:
+        if training_args.TRAIN:
             # copy config
-            shutil.copy(src=get_config.path(), dst=os.path.join(exp_dir, 'config.yml'))
+            shutil.copy(src=get_config.path(), dst=os.path.join(self.exp_dir, 'config.yml'))
 
         # Step size.
         self.log_step = self.config.train.log_step
@@ -89,7 +91,7 @@ class Solver(object):
 
         # Build the model
         self.build_model()
-        if LOAD_MODEL:
+        if training_args.LOAD_MODEL:
             self.restore_model()
         if self.use_tensorboard:
             self.build_tensorboard()
@@ -159,7 +161,7 @@ class Solver(object):
     def get_train_test(self):
         self.training_data.feature_path_partition()
         partition = self.training_data.feat_partition
-        partition = partition[FOLD]
+        partition = partition[self.fold]
 
         train_files = {'positive': partition['train_pos'], 'negative': partition['train_neg']}
         # test_files = {'positive': partition['test_positive'], 'negative': partition['test_negative']}
@@ -333,11 +335,17 @@ class Solver(object):
         json.dump(dict, a_file, indent=2)
         a_file.close()
 
-def main():
+def main(args):
     solver = Solver(config=config)
-    if TRAIN:
+    if args.TRAIN:
         solver.train()
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='Arguments to train classifier')
+    parser.add_argument('--TRIAL', type=str, default='dummy_exp')
+    parser.add_argument('--TRAIN', action='store_true', default=True)
+    parser.add_argument('--LOAD_MODEL', action='store_true', default=False)
+    parser.add_argument('--FOLD', type=str, action='store_true', default='1')
+    args = parser.parse_args()
+    main(args)
