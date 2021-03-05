@@ -35,6 +35,7 @@ def main(args):
                    '5': None}
     outfiles = []
     for fold in ['1', '2', '3']:
+    # for fold in ['3']:
         """"""
         solver = Solver(config=config, training_args=args)
         solver.fold = fold
