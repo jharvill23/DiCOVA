@@ -1,0 +1,4 @@
+python3 -m classifier.train --TRIAL dummy_trial --FOLD 1
+
+source:
+https://stackoverflow.com/questions/40304117/import-statement-works-on-pycharm-but-not-from-terminal

@@ -92,7 +92,7 @@ class Solver(object):
         # Build the model
         self.build_model()
         if training_args.LOAD_MODEL:
-            self.restore_model()
+            self.restore_model(training_args.RESTORE_PATH)
         if self.use_tensorboard:
             self.build_tensorboard()
 
@@ -140,10 +140,10 @@ class Solver(object):
                                     map_location=lambda storage, loc: storage)
         return checkpoint
 
-    def restore_model(self):
+    def restore_model(self, G_path):
         """Restore the model"""
         print('Loading the trained models... ')
-        G_path = None
+        # G_path = None
         g_checkpoint = self._load(G_path)
         self.G.load_state_dict(g_checkpoint['model'])
         self.g_optimizer.load_state_dict(g_checkpoint['optimizer'])
@@ -319,6 +319,112 @@ class Solver(object):
                 except:
                     """"""
 
+    def val_scores(self):
+        self.evaluation_dir = os.path.join(self.exp_dir, 'evaluations')
+        if not os.path.exists(self.evaluation_dir):
+            os.mkdir(self.evaluation_dir)
+        self.fold_dir = os.path.join(self.evaluation_dir, self.test_fold)
+        if not os.path.isdir(self.fold_dir):
+            os.mkdir(self.fold_dir)
+        self.eval_type_dir = os.path.join(self.fold_dir, 'val')
+        if not os.path.isdir(self.eval_type_dir):
+            os.mkdir(self.eval_type_dir)
+        """Get train/test"""
+        train, val = self.get_train_test()
+        train_files_list = train['positive'] + train['negative']
+        val_files_list = val['positive'] + val['negative']
+
+        ground_truth = []
+        pred_scores = []
+
+        """Make dataloader"""
+        train_data = Dataset(config=config, params={'files': train_files_list,
+                                                    'mode': 'train',
+                                                    'data_object': self.training_data,
+                                                    'specaugment': self.config.train.specaugment})
+        train_gen = data.DataLoader(train_data, batch_size=config.train.batch_size,
+                                    shuffle=True, collate_fn=train_data.collate, drop_last=True)
+        self.index2class = train_data.index2class
+        self.class2index = train_data.class2index
+        val_data = Dataset(config=config, params={'files': val_files_list,
+                                                  'mode': 'train',
+                                                  'data_object': self.training_data,
+                                                  'specaugment': False})
+        val_gen = data.DataLoader(val_data, batch_size=1, shuffle=True, collate_fn=val_data.collate, drop_last=False)
+        for batch_number, features in tqdm(enumerate(val_gen)):
+            feature = features['features']
+            files = features['files']
+            self.G = self.G.eval()
+            _, intermediate = self.pretrained(feature)
+            predictions = self.G(intermediate)
+            predictions = predictions.detach().cpu().numpy()
+            scores = softmax(predictions, axis=1)
+            info = [self.training_data.get_file_metadata(x) for x in files]
+            file = files[0]  # batch size 1
+
+            filekey = file.split('/')[-1][:-4]
+            gt = info[0]['Covid_status']
+            score = scores[0, self.class2index['p']]
+            ground_truth.append(filekey + ' ' + gt)
+            pred_scores.append(filekey + ' ' + str(score))
+        """Sort the lists in alphabetical order"""
+        ground_truth.sort()
+        pred_scores.sort()
+
+        """Write the files"""
+        gt_path = os.path.join(self.eval_type_dir, 'val_labels')
+        score_path = os.path.join(self.eval_type_dir, 'scores')
+        for path in [gt_path, score_path]:
+            with open(path, 'w') as f:
+                if path == gt_path:
+                    for item in ground_truth:
+                        f.write("%s\n" % item)
+                elif path == score_path:
+                    for item in pred_scores:
+                        f.write("%s\n" % item)
+        out_file_path = os.path.join(self.eval_type_dir, 'outfile.pkl')
+        utils.scoring(refs=gt_path, sys_outs=score_path, out_file=out_file_path)
+
+    def eval(self):
+        self.evaluation_dir = os.path.join(self.exp_dir, 'evaluations')
+        if not os.path.exists(self.evaluation_dir):
+            os.mkdir(self.evaluation_dir)
+        self.fold_dir = os.path.join(self.evaluation_dir, self.test_fold)
+        if not os.path.isdir(self.fold_dir):
+            os.mkdir(self.fold_dir)
+        self.eval_type_dir = os.path.join(self.fold_dir, 'blind')
+        if not os.path.isdir(self.eval_type_dir):
+            os.mkdir(self.eval_type_dir)
+        """Get test files"""
+        test_files = utils.collect_files(self.config.directories.dicova_test_logspect_feats)
+        """Make dataloader"""
+        test_data = Dataset(config=config, params={'files': test_files,
+                                                    'mode': 'test',
+                                                    'data_object': None,
+                                                    'specaugment': 0.0})
+        test_gen = data.DataLoader(test_data, batch_size=1, shuffle=True, collate_fn=test_data.collate, drop_last=False)
+        self.index2class = test_data.index2class
+        self.class2index = test_data.class2index
+        pred_scores = []
+        for batch_number, features in tqdm(enumerate(test_gen)):
+            feature = features['features']
+            files = features['files']
+            self.G = self.G.eval()
+            _, intermediate = self.pretrained(feature)
+            predictions = self.G(intermediate)
+
+            file = files[0]  # batch size is 1 for evaluation
+            filekey = file.split('/')[-1][:-4]
+            predictions = predictions.detach().cpu().numpy()
+            scores = softmax(predictions, axis=1)
+            score = scores[0, self.class2index['p']]
+            pred_scores.append(filekey + ' ' + str(score))
+        pred_scores.sort()
+        score_path = os.path.join(self.eval_type_dir, 'scores')
+        with open(score_path, 'w') as f:
+            for item in pred_scores:
+                f.write("%s\n" % item)
+
     def to_gpu(self, tensor):
         tensor = tensor.to(self.torch_type)
         tensor = tensor.to(self.device)
@@ -336,7 +442,7 @@ class Solver(object):
         a_file.close()
 
 def main(args):
-    solver = Solver(config=config)
+    solver = Solver(config=config, training_args=args)
     if args.TRAIN:
         solver.train()
 
@@ -346,6 +452,7 @@ if __name__ == "__main__":
     parser.add_argument('--TRIAL', type=str, default='dummy_exp')
     parser.add_argument('--TRAIN', action='store_true', default=True)
     parser.add_argument('--LOAD_MODEL', action='store_true', default=False)
-    parser.add_argument('--FOLD', type=str, action='store_true', default='1')
+    parser.add_argument('--FOLD', type=str, default='1')
+    parser.add_argument('--RESTORE_PATH', type=str, default='')
     args = parser.parse_args()
     main(args)

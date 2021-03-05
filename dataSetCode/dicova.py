@@ -150,14 +150,18 @@ class Dataset(object):
     def __getitem__(self, index):
         'Get the data item'
         file = self.list_IDs[index]
-        metadata = self.data_object.get_file_metadata(file)
-        label = self.class2index[metadata['Covid_status']]
-        label = self.to_GPU(torch.from_numpy(np.asarray(label)))
+        if self.mode != 'test':
+            metadata = self.data_object.get_file_metadata(file)
+            label = self.class2index[metadata['Covid_status']]
+            label = self.to_GPU(torch.from_numpy(np.asarray(label)))
+        else:
+            metadata = None
+            label = None
 
         if self.specaugment:
             feats = joblib.load(file)
             x = random.uniform(0, 1)
-            if x <= self.specaug_probability:
+            if x <= self.specaug_probability and self.mode != 'test':
                 time_width = round(feats.shape[0]*0.1)
                 aug_feats = SPEC.spec_augment(feats, resize_mode='PIL', max_time_warp=80,
                                                                        max_freq_width=20, n_freq_mask=1,
@@ -174,13 +178,16 @@ class Dataset(object):
         else:
             feats = self.to_GPU(torch.from_numpy(joblib.load(file)))
         """Get incorrect_scaler value"""
-        if metadata['Covid_status'] == 'p':
-            scaler = self.incorrect_scaler
+        if self.mode != 'test':
+            if metadata['Covid_status'] == 'p':
+                scaler = self.incorrect_scaler
+            else:
+                scaler = 1
+            scaler = self.to_GPU(torch.from_numpy(np.asarray(scaler)))
+            scaler = scaler.to(torch.float32)
+            scaler.requires_grad = True
         else:
-            scaler = 1
-        scaler = self.to_GPU(torch.from_numpy(np.asarray(scaler)))
-        scaler = scaler.to(torch.float32)
-        scaler.requires_grad = True
+            scaler = None
         return file, feats, label, scaler
 
     def to_GPU(self, tensor):
@@ -196,8 +203,9 @@ class Dataset(object):
         labels = [item[2] for item in data]
         scalers = [item[3] for item in data]
         spects = pad_sequence(spects, batch_first=True, padding_value=0)
-        labels = torch.stack([x for x in labels])
-        scalers = torch.stack([x for x in scalers])
+        if self.mode != 'test':
+            labels = torch.stack([x for x in labels])
+            scalers = torch.stack([x for x in scalers])
         return {'files': files, 'features': spects, 'labels': labels, 'scalers': scalers}
 
 
