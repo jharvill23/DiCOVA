@@ -368,7 +368,7 @@ def summary(folname, scores, iterations):
 
 def eval_summary(folname, outfiles):
     # folname = sys.argv[1]
-    num_files = 3
+    num_files = len(outfiles)
     R = []
     for file in outfiles:
         # res = pickle.load(open(folname + "/fold_{}/val_results.pkl".format(i + 1), 'rb'))
