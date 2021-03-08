@@ -13,7 +13,7 @@ import json
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
 from config import get_config
-from dataSetCode import dicova
+from dataSetCode import dicova2 as dicova
 from dataSetCode.dicova2 import Dataset
 import torch.nn.functional as F
 import copy
@@ -158,10 +158,25 @@ class Solver(object):
         """Reset the gradient buffers."""
         self.g_optimizer.zero_grad()
 
+    def convert_filelist_to_augmented_list(self, filelist):
+        newlist = []
+        for file in filelist:
+            filename = file.split('/')[-1][:-4]
+            for i in range(self.config.data.num_augment_examples):
+                new_path = os.path.join(self.config.directories.dicova_augmented_feats, filename + '_' + str(i) + '.pkl')
+                if os.path.exists(new_path):
+                    newlist.append(new_path)
+                stop = None
+        return newlist
+
     def get_train_test(self):
         self.training_data.feature_path_partition()
         partition = self.training_data.feat_partition
         partition = partition[self.fold]
+
+        """For each list we need to take the filenames and get the augmented file locations"""
+        partition['train_pos'] = self.convert_filelist_to_augmented_list(partition['train_pos'])
+        partition['train_neg'] = self.convert_filelist_to_augmented_list(partition['train_neg'])
 
         train_files = {'positive': partition['train_pos'], 'negative': partition['train_neg']}
         # test_files = {'positive': partition['test_positive'], 'negative': partition['test_negative']}
@@ -177,7 +192,7 @@ class Solver(object):
         ground_truth = []
         pred_scores = []
         for batch_number, features in tqdm(enumerate(val)):
-            try:
+            # try:
                 spects = features['spects']
                 opensmile = features['opensmile']
                 files = features['files']
@@ -218,8 +233,8 @@ class Solver(object):
                         elif pred_value[i] == 'p':
                             FP += 1
 
-            except:
-                """"""
+            # except:
+            #     """"""
         """Sort the lists in alphabetical order"""
         ground_truth.sort()
         pred_scores.sort()
@@ -274,14 +289,14 @@ class Solver(object):
             self.index2class = train_data.index2class
             self.class2index = train_data.class2index
             val_data = Dataset(config=self.config, params={'files': val_files_list,
-                                                      'mode': 'train',
+                                                      'mode': 'val',
                                                       'data_object': self.training_data,
                                                       'specaugment': False})
             val_gen = data.DataLoader(val_data, batch_size=config.train.batch_size,
                                       shuffle=True, collate_fn=val_data.collate, drop_last=True)
 
             for batch_number, features in enumerate(train_gen):
-                # try:
+                try:
                     spects = features['spects']
                     opensmile = features['opensmile']
                     files = features['files']
@@ -304,19 +319,19 @@ class Solver(object):
                         print(str(iterations) + ', loss: ' + str(normalized_loss))
                         if self.use_tensorboard:
                             self.logger.add_scalar('loss', normalized_loss, iterations)
-                    try:
-                        if iterations % self.model_save_step == 0 and iterations != 0:
-                            """Calculate validation loss"""
-                            val_loss, Prec, Rec, acc, auc = self.val_loss(val=val_gen, iterations=iterations)
-                            print(str(iterations) + ', val_loss: ' + str(val_loss))
-                            if self.use_tensorboard:
-                                self.logger.add_scalar('val_loss', val_loss, iterations)
-                                self.logger.add_scalar('Prec', Prec, iterations)
-                                self.logger.add_scalar('Rec', Rec, iterations)
-                                self.logger.add_scalar('Accuracy', acc, iterations)
-                                self.logger.add_scalar('AUC', auc, iterations)
-                    except:
-                        """"""
+                    # try:
+                    if iterations % self.model_save_step == 0:
+                        """Calculate validation loss"""
+                        val_loss, Prec, Rec, acc, auc = self.val_loss(val=val_gen, iterations=iterations)
+                        print(str(iterations) + ', val_loss: ' + str(val_loss))
+                        if self.use_tensorboard:
+                            self.logger.add_scalar('val_loss', val_loss, iterations)
+                            self.logger.add_scalar('Prec', Prec, iterations)
+                            self.logger.add_scalar('Rec', Rec, iterations)
+                            self.logger.add_scalar('Accuracy', acc, iterations)
+                            self.logger.add_scalar('AUC', auc, iterations)
+                    # except:
+                    #     """"""
                     """Save model checkpoints."""
                     if iterations % self.model_save_step == 0:
                         G_path = os.path.join(self.model_save_dir, '{}-G.ckpt'.format(iterations))
@@ -325,8 +340,8 @@ class Solver(object):
                         print('Saved model checkpoints into {}...'.format(self.model_save_dir))
 
                     iterations += 1
-                # except:
-                #     """"""
+                except:
+                    """"""
 
     def val_scores(self):
         self.evaluation_dir = os.path.join(self.exp_dir, 'evaluations')
@@ -573,7 +588,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments to train classifier')
-    parser.add_argument('--TRIAL', type=str, default='fold_1_OpenSMILE_scaling_10_ff_pretraining_coughvid_specaug_BATCH_SIZE_1')
+    parser.add_argument('--TRIAL', type=str, default='fold_1_OpenSMILE_scaling_10_ff_pretraining_coughvid_specaug')
     parser.add_argument('--TRAIN', action='store_true', default=True)
     parser.add_argument('--LOAD_MODEL', action='store_true', default=False)
     parser.add_argument('--FOLD', type=str, default='1')

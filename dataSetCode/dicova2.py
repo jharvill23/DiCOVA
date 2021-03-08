@@ -20,6 +20,7 @@ import soundfile as sf
 import copy
 import string
 import opensmile
+from tqdm import tqdm
 
 class DiCOVA(object):
     """Solver"""
@@ -108,6 +109,12 @@ class DiCOVA(object):
         filename = file.split('/')[-1][:-4]
         return self.metadata[filename]
 
+    def get_augmented_file_metadata(self, file):
+        filename = file.split('/')[-1][:-4]
+        filename_chunks = filename.split('_')
+        filename = filename_chunks[0] + '_' + filename_chunks[1]
+        return self.metadata[filename]
+
     def get_features(self):
         """Add full filepaths"""
         partition = self.partition['1']
@@ -121,6 +128,25 @@ class DiCOVA(object):
         utils.flac2wav(filelist=new_filelist, dump_dir=dump_dir)
         new_filelist = utils.collect_files(self.config.directories.dicova_wavs)
         utils.get_features(filelist=new_filelist, dump_dir=self.featdir)
+
+    def get_opensmile_feats(self):
+        # dump_dir = self.config.directories.dicova_wavs
+        # utils.flac2wav(filelist=['/home/john/Documents/School/Spring_2021/DiCOVA_Train_Val_Data_Release_updated/AUDIO/YsVTYCAs_cough.flac'], dump_dir=dump_dir)
+
+        files = utils.collect_files(self.config.directories.dicova_wavs)
+        dump_root = self.config.directories.dicova_opensmile_feats
+        if not os.path.isdir(self.config.directories.dicova_opensmile_feats):
+            os.mkdir(self.config.directories.dicova_opensmile_feats)
+        self.opensmile = opensmile.Smile(
+            feature_set=opensmile.FeatureSet.ComParE_2016,
+            feature_level=opensmile.FeatureLevel.Functionals,
+        )
+        for file in tqdm(files):
+            output = self.opensmile.process_file(file)
+            opensmile_feats = np.squeeze(output.to_numpy())
+            filename = file.split('/')[-1][:-4]
+            dump_path = os.path.join(dump_root, filename + '.pkl')
+            joblib.dump(opensmile_feats, dump_path)
 
     def get_test_files_and_feats(self):
         root = self.config.directories.dicova_test_root
@@ -156,6 +182,9 @@ class Dataset(object):
             feature_set=opensmile.FeatureSet.ComParE_2016,
             feature_level=opensmile.FeatureLevel.Functionals,
         )
+        if not os.path.exists('dicova_opensmile_maxvals.pkl'):
+            utils.get_normalization_factors_opensmile()
+        self.opensmile_norm_factors = joblib.load('dicova_opensmile_maxvals.pkl')
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -164,10 +193,14 @@ class Dataset(object):
     def __getitem__(self, index):
         'Get the data item'
         file = self.list_IDs[index]
-        """This may be a dumb way to do this but we want to change the filename here to go to .wav.
-           It's coming from the .pkl files but I don't wanna change the pipeline so we fix it here."""
-        file = self.get_wav_from_pkl(file=file)
-        if self.mode != 'test':
+        # """This may be a dumb way to do this but we want to change the filename here to go to .wav.
+        #    It's coming from the .pkl files but I don't wanna change the pipeline so we fix it here."""
+        # file = self.get_wav_from_pkl(file=file)
+        if self.mode == 'train':
+            metadata = self.data_object.get_augmented_file_metadata(file)
+            label = self.class2index[metadata['Covid_status']]
+            label = self.to_GPU(torch.from_numpy(np.asarray(label)))
+        elif self.mode == 'val':
             metadata = self.data_object.get_file_metadata(file)
             label = self.class2index[metadata['Covid_status']]
             label = self.to_GPU(torch.from_numpy(np.asarray(label)))
@@ -178,32 +211,45 @@ class Dataset(object):
         """We want to load the audio file. Then we want to perform the specaugment-esque transformations
            in the time domain. Then (1) compute spectrogram (2) compute OpenSMILE features."""
 
-        audio, _ = librosa.core.load(file, sr=self.config.data.sr)
-        if self.specaugment and self.mode != 'test':
-            new_audio = self.time_domain_spec_aug(audio=audio)
-        else:
-            new_audio = copy.deepcopy(audio)
+        if self.mode == 'train':
+            feats = joblib.load(file)
+            spectrogram = feats['spectrogram']
+            opensmile_feats = feats['opensmile']
+        elif self.mode == 'val':
+            spectrogram = joblib.load(file)
+            """Now we must also load the opensmile feats so change the filename"""
+            filename = file.split('/')[-1][:-4]
+            opensmile_path = os.path.join(self.config.directories.dicova_opensmile_feats, filename + '.pkl')
+            opensmile_feats = joblib.load(opensmile_path)
 
-        """Compute spectrogram"""
-        feature_processor = utils.Mel_log_spect()
-        spectrogram = feature_processor.get_Mel_log_spect(new_audio)
+        # audio, _ = librosa.core.load(file, sr=self.config.data.sr)
+        # if self.specaugment and self.mode != 'test':
+        #     new_audio = self.time_domain_spec_aug(audio=audio)
+        # else:
+        #     new_audio = copy.deepcopy(audio)
 
-        """Get OpenSMILE features"""
-        # Generate random filename of length 8 to write to disk
-        temp_write_name = ''.join(random.choices(string.ascii_uppercase +
-                                     string.digits, k=8))
-        dump_path = os.path.join(self.dataloader_temp_wavs, temp_write_name + '.wav')
-        sf.write(dump_path, new_audio, self.config.data.sr, subtype='PCM_16')
-        output = self.opensmile.process_file(dump_path)
-        os.remove(dump_path)  # don't want to keep all those temporary files!
-        opensmile_feats = np.squeeze(output.to_numpy())
+        # """Compute spectrogram"""
+        # feature_processor = utils.Mel_log_spect()
+        # spectrogram = feature_processor.get_Mel_log_spect(new_audio)
+        #
+        # """Get OpenSMILE features"""
+        # # Generate random filename of length 8 to write to disk
+        # temp_write_name = ''.join(random.choices(string.ascii_uppercase +
+        #                              string.digits, k=8))
+        # dump_path = os.path.join(self.dataloader_temp_wavs, temp_write_name + '.wav')
+        # sf.write(dump_path, new_audio, self.config.data.sr, subtype='PCM_16')
+        # output = self.opensmile.process_file(dump_path)
+        # os.remove(dump_path)  # don't want to keep all those temporary files!
+        # opensmile_feats = np.squeeze(output.to_numpy())
 
         """If we had the augmented dataset ahead of time, we could normalize each feature,
            but let's just normalize the feature vector. It should be similar."""
-        opensmile_feats = opensmile_feats/np.max(opensmile_feats)
+        opensmile_feats = opensmile_feats/self.opensmile_norm_factors
 
         spectrogram = self.to_GPU(torch.from_numpy(spectrogram))
         opensmile_feats = self.to_GPU(torch.from_numpy(opensmile_feats))
+        spectrogram = spectrogram.to(torch.float32)
+        opensmile_feats = opensmile_feats.to(torch.float32)
 
         # if self.specaugment:
         #     feats = joblib.load(file)
@@ -336,7 +382,8 @@ def main():
     config = get_config.get()
     dicova = DiCOVA(config=config)
     # dicova.get_features()
-    dicova.get_test_files_and_feats()
+    # dicova.get_test_files_and_feats()
+    dicova.get_opensmile_feats()
 
 if __name__ == "__main__":
     main()

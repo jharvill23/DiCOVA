@@ -24,6 +24,7 @@ directories:
     coughvid_logspect_feats: coughvid_logspect_feats/
     dicova_logspect_feats: dicova_logspect_feats/
     dicova_augmented_feats: dicova_augmented_feats/
+    dicova_opensmile_feats: dicova_opensmile_feats/
     opensmile_feats: opensmile_feats/
     features: features/
     exps: exps/

@@ -193,6 +193,15 @@ def augment_dicova():
         for _ in tqdm(executor.map(process_augmentor, new_list)):
             """"""
 
+def get_normalization_factors_opensmile():
+    print('Getting normalization factors for dicova opensmile...')
+    files = collect_files(config.directories.dicova_opensmile_feats)
+    feats = np.zeros(shape=(len(files), 6373))
+    for i, file in enumerate(files):
+        row = joblib.load(file)
+        feats[i] = row
+    max_vals = np.max(np.abs(feats), axis=0)
+    joblib.dump(max_vals, 'dicova_opensmile_maxvals.pkl')
 
 def collect_files(directory):
     all_files = []
@@ -549,7 +558,8 @@ def eval_summary(folname, outfiles):
 
 def main():
     """"""
-    augment_dicova()
+    get_normalization_factors_opensmile()
+    # augment_dicova()
     # files = get_dicova_partitions()
     # meta = dicova_metadata('/home/john/Documents/School/Spring_2021/DiCOVA/wavs/aBXnKRBt_cough.wav')
     # get_coswara_partition()
