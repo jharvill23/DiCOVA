@@ -175,7 +175,7 @@ class PreTrainer2(nn.Module):
         intermediate_state = x  # take the intermediate layer after two layers of LSTM
         x, _ = self.encoder_lstm_2(x)
         x = self.full1(x)
-        x = F.tanh(x)
+        x = torch.tanh(x)
         x = self.full2(x)
         return x, intermediate_state
 
@@ -218,6 +218,55 @@ class PostPreTrainClassifier(nn.Module):
         x = self.full2(x)
         x = self.dropout2(x)
         x = F.tanh(x)
+        x = self.full3(x)
+        # x = self.dropout3(x)
+        # x = F.tanh(x)
+        # x = self.full4(x)
+        return x
+
+class PostPreTrainClassifierWithOpenSMILE(nn.Module):
+    def __init__(self, config):
+        super(PostPreTrainClassifierWithOpenSMILE, self).__init__()
+        self.config = config
+        self.input_size = self.config.pretraining2.hidden_size
+        self.hidden_size = self.config.post_pretraining_classifier.hidden_size
+        self.linear_hidden_size = self.config.post_pretraining_classifier.linear_hidden_size
+        self.encoder_num_layers = self.config.post_pretraining_classifier.encoder_num_layers
+        self.batch_first = self.config.post_pretraining_classifier.batch_first
+        self.dropout = self.config.post_pretraining_classifier.dropout
+        self.output_dim = 2  # number of classes
+        self.bidirectional = config.post_pretraining_classifier.bidirectional
+
+        self.encoder_lstm_1 = nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size,
+                                      num_layers=self.encoder_num_layers, batch_first=self.batch_first,
+                                      dropout=self.dropout, bidirectional=self.bidirectional)
+
+        self.full1 = nn.Linear(in_features=self.hidden_size*2 + 6373 if self.bidirectional else self.hidden_size + 6373,
+                               out_features=self.linear_hidden_size)
+        self.dropout1 = nn.Dropout(p=self.dropout)
+        self.full2 = nn.Linear(in_features=self.linear_hidden_size, out_features=self.linear_hidden_size)
+        self.dropout2 = nn.Dropout(p=self.dropout)
+        self.full3 = nn.Linear(in_features=self.linear_hidden_size, out_features=self.output_dim)
+        # self.dropout3 = nn.Dropout(p=self.dropout)
+        # self.full4 = nn.Linear(in_features=self.linear_hidden_size, out_features=self.output_dim)
+
+    def forward(self, data_dict):
+        spect = data_dict['spect']
+        opensmile = data_dict['opensmile']
+        x, _ = self.encoder_lstm_1(spect)
+        out_forward = x[:, :, :self.hidden_size]
+        out_backward = x[:, :, self.hidden_size:]
+        x_forward = out_forward[:, -1]
+        x_backward = out_backward[:, 0]
+        summary = torch.cat((x_forward, x_backward), dim=1)
+        """Need to concatenate with opensmile feats as well"""
+        fully_connected_input = torch.cat((summary, opensmile), dim=1)
+        x = self.full1(fully_connected_input)
+        x = self.dropout1(x)
+        x = torch.tanh(x)
+        x = self.full2(x)
+        x = self.dropout2(x)
+        x = torch.tanh(x)
         x = self.full3(x)
         # x = self.dropout3(x)
         # x = F.tanh(x)

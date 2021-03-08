@@ -24,6 +24,10 @@ import soundfile as sf
 import pickle
 from sklearn.metrics import auc
 import sys
+import sox
+import copy
+import string
+import opensmile
 
 config = get_config.get()
 
@@ -65,6 +69,130 @@ class Mel_log_spect(object):
         feature = self.get_Mel_log_spect(y, n_mels=self.num_mels)
         audio = self.audio_from_spect(feature)
         librosa.output.write_wav(write_path, y=audio, sr=self.sr, norm=True)
+
+class Spec_OpenSMILE_augmentor(object):
+    def __init__(self):
+        """"""
+        self.config = config
+        self.dataloader_temp_wavs = self.config.directories.dataloader_temp_wavs
+        self.opensmile = opensmile.Smile(
+            feature_set=opensmile.FeatureSet.ComParE_2016,
+            feature_level=opensmile.FeatureLevel.Functionals,
+        )
+
+    def time_domain_spec_aug(self, audio, num_time_masks=2):
+        num_audio_samples = len(audio)
+        compressor = sox.Transformer()
+        expander = sox.Transformer()
+        """Step 1: time warping"""
+        speed_up_factor = np.random.uniform(low=1.01, high=1.3)
+        compressor.tempo(factor=speed_up_factor)
+        slow_down_factor = np.random.uniform(low=0.7, high=0.99)
+        expander.tempo(factor=slow_down_factor)
+        # split audio into two pieces then choose randomly which piece to speed up or slow down
+        split_point = int(num_audio_samples/2)
+        first_half = audio[0:split_point]
+        second_half = audio[split_point:]
+        decision = np.random.uniform(low=0, high=1)
+        if decision < 0.5:
+            new_first_half = compressor.build_array(input_array=first_half, sample_rate_in=self.config.data.sr)
+            new_second_half = expander.build_array(input_array=second_half, sample_rate_in=self.config.data.sr)
+        else:
+            new_first_half = expander.build_array(input_array=first_half, sample_rate_in=self.config.data.sr)
+            new_second_half = compressor.build_array(input_array=second_half, sample_rate_in=self.config.data.sr)
+        warped_audio = np.concatenate((new_first_half, new_second_half))
+        num_audio_samples = len(warped_audio)
+        # plt.subplot(211)
+        # plt.plot(audio)
+        # plt.subplot(212)
+        # plt.plot(warped_audio)
+        # plt.show()
+        #
+        # sf.write('warped_dummy.wav', warped_audio, self.config.data.sr, subtype='PCM_16')
+
+        """Step 2: time masks. This equates to simple amplitude modulation."""
+        min_time_mask_duration = 0.05*self.config.data.sr
+        max_time_mask_duration = 0.55*self.config.data.sr
+        fade_out_samples = 20
+        if num_audio_samples > max_time_mask_duration + 10:
+            for _ in range(num_time_masks):
+                mask = np.ones_like(warped_audio)
+                mask_start = np.random.randint(low=0, high=num_audio_samples-max_time_mask_duration)
+                mask_dur = np.random.randint(low=min_time_mask_duration, high=max_time_mask_duration)
+                mask_chunk = self.get_fade_out(mask_length=mask_dur, fade_out_samples=fade_out_samples)
+                mask[mask_start:mask_start+mask_dur] = mask_chunk
+                # old_warped = copy.deepcopy(warped_audio)
+                warped_audio = warped_audio*mask
+                # plt.subplot(311)
+                # plt.plot(old_warped)
+                # plt.subplot(312)
+                # plt.plot(mask)
+                # plt.subplot(313)
+                # plt.plot(warped_audio)
+                # plt.show()
+        time_masked_audio = warped_audio
+        """Step 3: Bandreject"""
+        reject_frequency = np.random.uniform(low=80, high=int(self.config.data.sr/2)-300)
+        width_q = np.random.uniform(low=0.05, high=0.1)
+        bandreject = sox.Transformer()
+        bandreject.bandreject(frequency=reject_frequency, width_q=width_q)
+        bandrejected_audio = bandreject.build_array(input_array=time_masked_audio, sample_rate_in=self.config.data.sr)
+        # sf.write('fully_processed_dummy.wav', bandrejected_audio, self.config.data.sr, subtype='PCM_16')
+        return bandrejected_audio
+
+    def get_fade_out(self, mask_length, fade_out_samples):
+        start = np.linspace(start=1, stop=0, num=fade_out_samples)
+        middle = np.zeros(shape=(mask_length-2*fade_out_samples))
+        stop = np.linspace(start=0, stop=1, num=fade_out_samples)
+        mask = np.concatenate((start, middle, stop))
+        return mask
+
+    def augment(self, filename, audio, augment_number, dump_dir):
+        new_audio = self.time_domain_spec_aug(audio=audio)
+
+        """Compute spectrogram"""
+        feature_processor = Mel_log_spect()
+        spectrogram = feature_processor.get_Mel_log_spect(new_audio)
+
+        """Get OpenSMILE features"""
+        # Generate random filename of length 24 to write to disk
+        temp_write_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=24))
+        dump_path = os.path.join(self.dataloader_temp_wavs, temp_write_name + '.wav')
+        sf.write(dump_path, new_audio, self.config.data.sr, subtype='PCM_16')
+        output = self.opensmile.process_file(dump_path)
+        os.remove(dump_path)  # don't want to keep all those temporary files!
+        opensmile_feats = np.squeeze(output.to_numpy())
+
+        """Organize and save to disk"""
+        features = {'spectrogram': spectrogram, 'opensmile': opensmile_feats}
+        permanent_dump_path = os.path.join(dump_dir, filename + '_' + str(augment_number) + '.pkl')
+        joblib.dump(value=features, filename=permanent_dump_path)
+
+def process_augmentor(data):
+    file = data['file']
+    filename = file.split('/')[-1][:-4]
+    dump_dir = data['dump_dir']
+    augmentor = Spec_OpenSMILE_augmentor()
+    audio, _ = librosa.core.load(file, sr=config.data.sr)
+    for i in range(config.data.num_augment_examples):
+        try:
+            augmentor.augment(filename=filename, audio=audio, augment_number=i, dump_dir=dump_dir)
+        except:
+            print("Had trouble with audio file...")
+
+def augment_dicova():
+    files = collect_files(config.directories.dicova_wavs)
+    dump_dir = config.directories.dicova_augmented_feats
+    if not os.path.exists(dump_dir):
+        os.mkdir(dump_dir)
+    new_list = []
+    for file in files:
+        new_list.append({'file': file, 'dump_dir': dump_dir})
+    # process_augmentor(new_list[0])
+    with concurrent.futures.ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+        for _ in tqdm(executor.map(process_augmentor, new_list)):
+            """"""
+
 
 def collect_files(directory):
     all_files = []
@@ -233,7 +361,6 @@ def get_features(filelist, dump_dir):
     with concurrent.futures.ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
         for _ in tqdm(executor.map(process, new_list)):
             """"""
-
 
 def scoring(refs, sys_outs, out_file):
     """
@@ -422,6 +549,7 @@ def eval_summary(folname, outfiles):
 
 def main():
     """"""
+    augment_dicova()
     # files = get_dicova_partitions()
     # meta = dicova_metadata('/home/john/Documents/School/Spring_2021/DiCOVA/wavs/aBXnKRBt_cough.wav')
     # get_coswara_partition()
