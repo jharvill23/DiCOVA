@@ -95,7 +95,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments to train classifier')
-    parser.add_argument('--TRIAL', type=str, default='Evaluations_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0')
+    parser.add_argument('--TRIAL', type=str, default='Evaluations_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_ensemble')
     parser.add_argument('--TRAIN', action='store_true', default=False)
     parser.add_argument('--LOAD_MODEL', action='store_true', default=False)
     parser.add_argument('--FOLD', type=str, default='1')
