@@ -235,13 +235,17 @@ class PostPreTrainClassifierWithOpenSMILE(nn.Module):
         self.batch_first = self.config.post_pretraining_classifier.batch_first
         self.dropout = self.config.post_pretraining_classifier.dropout
         self.output_dim = 2  # number of classes
-        self.bidirectional = config.post_pretraining_classifier.bidirectional
+        self.bidirectional = self.config.post_pretraining_classifier.bidirectional
+        self.dropout_opensmile = self.config.post_pretraining_classifier.opensmile_dropout
 
         self.encoder_lstm_1 = nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size,
                                       num_layers=self.encoder_num_layers, batch_first=self.batch_first,
                                       dropout=self.dropout, bidirectional=self.bidirectional)
+        self.dropout_open = nn.Dropout(p=self.dropout_opensmile)
+        self.opensmile_full1 = nn.Linear(in_features=6373, out_features=self.linear_hidden_size)
+        self.opensmile_full2 = nn.Linear(in_features=self.linear_hidden_size, out_features=self.linear_hidden_size)
 
-        self.full1 = nn.Linear(in_features=self.hidden_size*2 + 6373 if self.bidirectional else self.hidden_size + 6373,
+        self.full1 = nn.Linear(in_features=self.hidden_size*2 + self.linear_hidden_size if self.bidirectional else self.hidden_size + self.linear_hidden_size,
                                out_features=self.linear_hidden_size)
         self.dropout1 = nn.Dropout(p=self.dropout)
         self.full2 = nn.Linear(in_features=self.linear_hidden_size, out_features=self.linear_hidden_size)
@@ -260,6 +264,12 @@ class PostPreTrainClassifierWithOpenSMILE(nn.Module):
         x_backward = out_backward[:, 0]
         summary = torch.cat((x_forward, x_backward), dim=1)
         """Need to concatenate with opensmile feats as well"""
+        opensmile = self.opensmile_full1(opensmile)
+        opensmile = torch.tanh(opensmile)
+        opensmile = self.dropout_open(opensmile)
+        opensmile = self.opensmile_full2(opensmile)
+        opensmile = torch.tanh(opensmile)
+        opensmile = self.dropout_open(opensmile)
         fully_connected_input = torch.cat((summary, opensmile), dim=1)
         x = self.full1(fully_connected_input)
         x = self.dropout1(x)

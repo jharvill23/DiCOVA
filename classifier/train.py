@@ -297,17 +297,19 @@ class Solver(object):
                         print(str(iterations) + ', loss: ' + str(normalized_loss))
                         if self.use_tensorboard:
                             self.logger.add_scalar('loss', normalized_loss, iterations)
-
-                    if iterations % self.model_save_step == 0:
-                        """Calculate validation loss"""
-                        val_loss, Prec, Rec, acc, auc = self.val_loss(val=val_gen, iterations=iterations)
-                        print(str(iterations) + ', val_loss: ' + str(val_loss))
-                        if self.use_tensorboard:
-                            self.logger.add_scalar('val_loss', val_loss, iterations)
-                            self.logger.add_scalar('Prec', Prec, iterations)
-                            self.logger.add_scalar('Rec', Rec, iterations)
-                            self.logger.add_scalar('Accuracy', acc, iterations)
-                            self.logger.add_scalar('AUC', auc, iterations)
+                    try:
+                        if iterations % self.model_save_step == 0:
+                            """Calculate validation loss"""
+                            val_loss, Prec, Rec, acc, auc = self.val_loss(val=val_gen, iterations=iterations)
+                            print(str(iterations) + ', val_loss: ' + str(val_loss))
+                            if self.use_tensorboard:
+                                self.logger.add_scalar('val_loss', val_loss, iterations)
+                                self.logger.add_scalar('Prec', Prec, iterations)
+                                self.logger.add_scalar('Rec', Rec, iterations)
+                                self.logger.add_scalar('Accuracy', acc, iterations)
+                                self.logger.add_scalar('AUC', auc, iterations)
+                    except:
+                        """"""
                     """Save model checkpoints."""
                     if iterations % self.model_save_step == 0:
                         G_path = os.path.join(self.model_save_dir, '{}-G.ckpt'.format(iterations))
@@ -564,7 +566,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments to train classifier')
-    parser.add_argument('--TRIAL', type=str, default='dummy_exp')
+    parser.add_argument('--TRIAL', type=str, default='fold_1_SMALL_scaling_10_ff_pretraining_coughvid_specaug_1dot0')
     parser.add_argument('--TRAIN', action='store_true', default=True)
     parser.add_argument('--LOAD_MODEL', action='store_true', default=False)
     parser.add_argument('--FOLD', type=str, default='1')
