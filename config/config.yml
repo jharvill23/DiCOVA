@@ -44,7 +44,7 @@ model:
 train:
     log_step: 100
     model_save_step: 500
-    num_epochs: 4000
+    num_epochs: 700
     batch_size: 3
     specaugment: true
     specaug_probability: 1.0
@@ -70,8 +70,8 @@ pretraining2:
 
 post_pretraining_classifier:
     lr: 0.0001
-    hidden_size: 100
-    linear_hidden_size: 100
+    hidden_size: 200
+    linear_hidden_size: 300
     encoder_num_layers: 2
     batch_first: true
     dropout: 0.1

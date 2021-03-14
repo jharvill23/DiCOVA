@@ -28,21 +28,73 @@ if not os.path.exists(config.directories.exps):
 
 
 def main(args):
+    """Best performing set"""
+    # best_models = {'1': ['./exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/71000-G.ckpt',
+    #                      './exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/84000-G.ckpt',
+    #                      './exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/156500-G.ckpt'],
+    #                '2': ['./exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/139000-G.ckpt',
+    #                      './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/117500-G.ckpt',
+    #                      './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/110000-G.ckpt'],
+    #                '3': ['./exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/125000-G.ckpt',
+    #                      './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/123000-G.ckpt',
+    #                      './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/85500-G.ckpt'],
+    #                '4': ['./exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/72500-G.ckpt',
+    #                      './exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/36000-G.ckpt',
+    #                      './exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/60000-G.ckpt'],
+    #                '5': ['./exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/103500-G.ckpt',
+    #                      './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/47500-G.ckpt',
+    #                      './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/65000-G.ckpt']}
+    """New try"""
+    # best_models = {'1': ['./exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/71000-G.ckpt',
+    #                      './exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/84000-G.ckpt',
+    #                      './exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/86000-G.ckpt',
+    #                      './exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/120500-G.ckpt',
+    #                      './exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/156500-G.ckpt'],
+    #                '2': ['./exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/139000-G.ckpt',
+    #                      './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/117500-G.ckpt',
+    #                      './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/159000-G.ckpt',
+    #                      './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/89000-G.ckpt',
+    #                      './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/110000-G.ckpt'],
+    #                '3': ['./exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/125000-G.ckpt',
+    #                      './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/22000-G.ckpt',
+    #                      './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/123000-G.ckpt',
+    #                      './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/85000-G.ckpt',
+    #                      './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/85500-G.ckpt'],
+    #                '4': ['./exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/72500-G.ckpt',
+    #                      './exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/36000-G.ckpt',
+    #                      './exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/43500-G.ckpt',
+    #                      './exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/73000-G.ckpt',
+    #                      './exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/60000-G.ckpt'],
+    #                '5': ['./exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/103500-G.ckpt',
+    #                      './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/104000-G.ckpt',
+    #                      './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/147500-G.ckpt',
+    #                      './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/47500-G.ckpt',
+    #                      './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/65000-G.ckpt']}
+
+    """New try hybrid"""
     best_models = {'1': ['./exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/71000-G.ckpt',
                          './exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/84000-G.ckpt',
                          './exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/156500-G.ckpt'],
                    '2': ['./exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/139000-G.ckpt',
                          './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/117500-G.ckpt',
+                         './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/159000-G.ckpt',
+                         './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/89000-G.ckpt',
                          './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/110000-G.ckpt'],
                    '3': ['./exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/125000-G.ckpt',
+                         './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/22000-G.ckpt',
                          './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/123000-G.ckpt',
+                         './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/85000-G.ckpt',
                          './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/85500-G.ckpt'],
                    '4': ['./exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/72500-G.ckpt',
                          './exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/36000-G.ckpt',
                          './exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/60000-G.ckpt'],
                    '5': ['./exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/103500-G.ckpt',
+                         './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/104000-G.ckpt',
+                         './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/147500-G.ckpt',
                          './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/47500-G.ckpt',
                          './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/65000-G.ckpt']}
+
+
     outfiles = []
     for fold in ['1', '2', '3', '4', '5']:
         paths = []
@@ -165,7 +217,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments to train classifier')
-    parser.add_argument('--TRIAL', type=str, default='Evaluations_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_ensemble_OpenSMILE')
+    parser.add_argument('--TRIAL', type=str, default='Evaluations_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_ensemble_3or5_models_hybrid')
     parser.add_argument('--TRAIN', action='store_true', default=False)
     parser.add_argument('--LOAD_MODEL', action='store_true', default=False)
     parser.add_argument('--FOLD', type=str, default='1')

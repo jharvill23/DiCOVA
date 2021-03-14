@@ -23,7 +23,7 @@ config = get_config.get()
 if not os.path.exists(config.directories.exps):
     os.mkdir(config.directories.exps)
 
-trial = 'pretraining_trial_4_coughvid_10_future_frames'
+trial = 'pretraining_trial_6_coughvid_20_future_frames'
 exp_dir = os.path.join(config.directories.exps, trial)
 if not os.path.isdir(exp_dir):
     os.mkdir(exp_dir)

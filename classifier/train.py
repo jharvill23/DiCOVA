@@ -104,7 +104,12 @@ class Solver(object):
         self.pretrained = model.CTCmodel(pretrain_config)
         # pretrain_checkpoint = self._load('./exps/pretraining_trial_2/models/20000-G.ckpt')
         # pretrain_checkpoint = self._load('./exps/pretraining_trial_3_10_future_frames/models/140000-G.ckpt')
-        pretrain_checkpoint = self._load('./exps/pretraining_trial_4_coughvid_10_future_frames/models/19500-G.ckpt')
+        if self.config.pretraining2.future_frames == 10:
+            pretrain_checkpoint = self._load('./exps/pretraining_trial_4_coughvid_10_future_frames/models/19500-G.ckpt') #BEST CONFIGURATION SO FAR
+        elif self.config.pretraining2.future_frames == 1:
+            pretrain_checkpoint = self._load('./exps/pretraining_trial_5_coughvid_1_future_frames/models/130500-G.ckpt')
+        elif self.config.pretraining2.future_frames == 20:
+            pretrain_checkpoint = self._load('./exps/pretraining_trial_6_coughvid_20_future_frames/models/126000-G.ckpt')
         self.pretrained.load_state_dict(pretrain_checkpoint['model'])
         """Freeze pretrainer"""
         for param in self.pretrained.parameters():
@@ -566,7 +571,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments to train classifier')
-    parser.add_argument('--TRIAL', type=str, default='fold_1_SMALL_scaling_10_ff_pretraining_coughvid_specaug_1dot0')
+    parser.add_argument('--TRIAL', type=str, default='fold_1_scaling_20_ff_pretraining_coughvid_specaug_1dot0')
     parser.add_argument('--TRAIN', action='store_true', default=True)
     parser.add_argument('--LOAD_MODEL', action='store_true', default=False)
     parser.add_argument('--FOLD', type=str, default='1')
