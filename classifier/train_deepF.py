@@ -171,6 +171,10 @@ class Solver(object):
         train_files = {'positive': partition['train_pos'], 'negative': partition['train_neg']}
         # test_files = {'positive': partition['test_positive'], 'negative': partition['test_negative']}
         val_files = {'positive': partition['val_pos'], 'negative': partition['val_neg']}
+
+        self.num_pos_examples = len(train_files['positive'])
+        self.num_neg_examples = len(train_files['negative'])
+
         return train_files, val_files
 
     def val_loss(self, val, iterations):
@@ -256,6 +260,38 @@ class Solver(object):
 
         return val_loss, Prec, Rec, acc, auc
 
+    def deepFLoss(self, predictions, labels):
+        B_square = self.deepFBeta**2
+        rescale_factor = self.config.train.batch_size/(self.num_neg_examples + self.num_pos_examples)
+        labels = labels.detach().cpu().numpy()
+        """Take softmax"""
+        predictions = torch.softmax(predictions, dim=1)
+        """Normalize the activations for each token in the batch"""
+        max_vals = torch.max(predictions, dim=1).values
+        max_vals = torch.unsqueeze(max_vals, dim=1)
+        predictions = predictions/max_vals
+        # pred_np = predictions.detach().cpu().numpy()
+        loss = 0
+        for k in [0, 1]:
+            if k == self.class2index['p']:
+                N_k = self.num_pos_examples*rescale_factor
+            elif k == self.class2index['n']:
+                N_k = self.num_neg_examples*rescale_factor
+
+            denom_sum = torch.sum(predictions[:, k])
+            class_k_indices = np.where(labels==k, 1, 0)
+            class_k_indices = np.nonzero(class_k_indices)
+            try:
+                numer_sum = torch.sum(predictions[class_k_indices, k])
+            except:
+                """If there aren't any examples of this class in this batch"""
+                numer_sum = 0
+            loss_term = ((1 + B_square)*numer_sum)/(B_square*N_k + denom_sum)
+            loss += loss_term
+
+        loss = loss*(-0.5)
+        return loss
+
     def train(self):
         iterations = 0
         """Get train/test"""
@@ -263,13 +299,14 @@ class Solver(object):
         train_files_list = train['positive'] + train['negative']
         val_files_list = val['positive'] + val['negative']
         self.crossent_loss = nn.CrossEntropyLoss(reduction='none')
+        self.deepFBeta = self.config.post_pretraining_classifier.deep_F_beta
         for epoch in range(self.config.train.num_epochs):
             """Make dataloader"""
             train_data = Dataset(config=config, params={'files': train_files_list,
                                                         'mode': 'train',
                                                         'data_object': self.training_data,
                                                         'specaugment': self.config.train.specaugment})
-            train_gen = data.DataLoader(train_data, batch_size=config.train.batch_size,
+            train_gen = data.DataLoader(train_data, batch_size=self.config.train.batch_size,
                                         shuffle=True, collate_fn=train_data.collate, drop_last=True)
             self.index2class = train_data.index2class
             self.class2index = train_data.class2index
@@ -277,9 +314,8 @@ class Solver(object):
                                                       'mode': 'train',
                                                       'data_object': self.training_data,
                                                       'specaugment': False})
-            val_gen = data.DataLoader(val_data, batch_size=config.train.batch_size,
+            val_gen = data.DataLoader(val_data, batch_size=self.config.train.batch_size,
                                       shuffle=True, collate_fn=val_data.collate, drop_last=True)
-
             for batch_number, features in enumerate(train_gen):
                 try:
                     feature = features['features']
@@ -289,9 +325,12 @@ class Solver(object):
                     self.G = self.G.train()
                     _, intermediate = self.pretrained(feature)
                     predictions = self.G(intermediate)
-                    loss = self.crossent_loss(predictions, labels)
-                    """Multiply loss of positive labels by """
-                    loss = loss * scalers
+                    loss = self.deepFLoss(predictions=predictions, labels=labels)
+
+
+                    # loss = self.crossent_loss(predictions, labels)
+                    # """Multiply loss of positive labels by """
+                    # loss = loss * scalers
                     # Backward and optimize.
                     self.reset_grad()
                     loss.sum().backward()
@@ -571,7 +610,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments to train classifier')
-    parser.add_argument('--TRIAL', type=str, default='dumdumdum')
+    parser.add_argument('--TRIAL', type=str, default='fold_1_deepF_beta_0dot7_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0')
     parser.add_argument('--TRAIN', action='store_true', default=True)
     parser.add_argument('--LOAD_MODEL', action='store_true', default=False)
     parser.add_argument('--FOLD', type=str, default='1')
