@@ -50,7 +50,7 @@ train:
     specaug_probability: 1.0
 
 pretraining:
-    future_frames: 10
+    future_frames: 1
     hidden_size: 400
     linear_hidden_size: 500
     encoder_num_layers: 4
@@ -59,7 +59,7 @@ pretraining:
     lr: 0.00005
 
 pretraining2:
-    future_frames: 10
+    future_frames: 1
     hidden_size: 400
     linear_hidden_size: 500
     encoder1_num_layers: 2
