@@ -336,9 +336,9 @@ def get_class2index_and_index2class():
     index2class = {0: 'p', 1: 'n'}
     return class2index, index2class
 
-def flac2wav(filelist, dump_dir):
+def flac2wav(filelist, dump_dir, sr=44100):
     for file in tqdm(filelist):
-        audio, sr = librosa.core.load(file, sr=44100)
+        audio, sr = librosa.core.load(file, sr=sr)
         """Save the data as a wav file instead of flac"""
         name = file.split('/')[-1][:-5] + '.wav'
         dump_path = os.path.join(dump_dir, name)

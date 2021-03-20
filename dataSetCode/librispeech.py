@@ -27,29 +27,29 @@ import random
 # song.export("DUMDUM.wav", format="wav")
 
 
-class COUGHVID(object):
+class LibriSpeech(object):
     """Solver"""
 
     def __init__(self, config):
         self.config = config
-        self.root = self.config.directories.coughvid_root
-        self.coughvid_wavs = self.config.directories.coughvid_wavs
-        self.coughvid_feats = self.config.directories.coughvid_logspect_feats
+        self.root = self.config.directories.librispeech_root
+        self.librispeech_wavs = self.config.directories.librispeech_wavs
+        self.librispeech_feats = self.config.directories.librispeech_logspect_feats
         # self.metadata = self.get_metadata()
         # self.partition = self.get_partition()
         # self.featdir = self.config.directories.dicova_logspect_feats
 
     def get_partition(self):
-        if not os.path.exists('coughvid_partition.pkl'):
-            files = collect_files(self.config.directories.coughvid_logspect_feats)
+        if not os.path.exists('librispeech_partition.pkl'):
+            files = collect_files(self.config.directories.librispeech_logspect_feats)
             random.shuffle(files)
             split_index = round(0.98*len(files))
             train = files[0:split_index]
             val = files[split_index:]
             partition = {'train': train, 'test': val}
-            joblib.dump(partition, 'coughvid_partition.pkl')
+            joblib.dump(partition, 'librispeech_partition.pkl')
         else:
-            partition = joblib.load('coughvid_partition.pkl')
+            partition = joblib.load('librispeech_partition.pkl')
         self.partition = partition
 
     def feature_path_partition(self):
@@ -83,27 +83,20 @@ class COUGHVID(object):
         filename = file.split('/')[-1][:-4]
         return self.metadata[filename]
 
-    def webm_to_wav(self):
-        if not os.path.isdir(self.coughvid_wavs):
-            os.mkdir(self.coughvid_wavs)
+    def flac_to_wav(self):
+        if not os.path.isdir(self.librispeech_wavs):
+            os.mkdir(self.librispeech_wavs)
         files = utils.collect_files(self.root)
         new_files = []
         for file in files:
-            if file[-5:] == '.webm':
+            if file[-5:] == '.flac':
                 new_files.append(file)
-        for file in tqdm(new_files):
-            try:
-                filename = file.split('/')[-1][:-5]
-                dump_path = os.path.join(self.coughvid_wavs, filename + '.wav')
-                song = AudioSegment.from_file(file, "webm")
-                song.export(dump_path, format="wav")
-            except:
-                print("File failed...")
+        utils.flac2wav(new_files, dump_dir=self.librispeech_wavs, sr=16000)
 
     def get_features(self):
         """Add full filepaths"""
-        filelist = utils.collect_files(self.coughvid_wavs)
-        dump_dir = self.coughvid_feats
+        filelist = utils.collect_files(self.librispeech_wavs)
+        dump_dir = self.librispeech_feats
         if not os.path.isdir(dump_dir):
             os.mkdir(dump_dir)
         utils.get_features(filelist=filelist, dump_dir=dump_dir)
@@ -114,7 +107,7 @@ class Dataset(object):
     def __init__(self, config, params):
         """Get the data and supporting files"""
         self.config = config
-        self.feature_dir = self.config.directories.coughvid_logspect_feats
+        self.feature_dir = self.config.directories.librispeech_logspect_feats
         'Initialization'
         self.list_IDs = params['files']
         self.mode = params["mode"]
@@ -159,9 +152,9 @@ class Dataset(object):
 
 def main():
     config = get_config.get()
-    coughvid = COUGHVID(config=config)
-    coughvid.webm_to_wav()
-    coughvid.get_features()
+    librispeech = LibriSpeech(config=config)
+    # librispeech.flac_to_wav()
+    librispeech.get_features()
 
 if __name__ == "__main__":
     main()

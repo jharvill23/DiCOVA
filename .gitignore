@@ -10,3 +10,5 @@
 /dataloader_temp_wavs/
 /dicova_augmented_feats/
 /dicova_opensmile_feats/
+/librispeech_wavs/
+/librispeech_logspect_feats/

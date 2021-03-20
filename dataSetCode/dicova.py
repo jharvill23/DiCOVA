@@ -212,7 +212,7 @@ class Dataset(object):
 def main():
     config = get_config.get()
     dicova = DiCOVA(config=config)
-    # dicova.get_features()
+    dicova.get_features()
     dicova.get_test_files_and_feats()
 
 if __name__ == "__main__":

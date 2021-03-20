@@ -13,8 +13,8 @@ import json
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
 from config import get_config
-from dataSetCode import coughvid
-from dataSetCode.coughvid import Dataset
+from dataSetCode import librispeech
+from dataSetCode.librispeech import Dataset
 import torch.nn.functional as F
 
 
@@ -23,7 +23,7 @@ config = get_config.get()
 if not os.path.exists(config.directories.exps):
     os.mkdir(config.directories.exps)
 
-trial = 'pretraining_trial_6_coughvid_20_future_frames'
+trial = 'pretraining_trial_1_librispeech_10_future_frames'
 exp_dir = os.path.join(config.directories.exps, trial)
 if not os.path.isdir(exp_dir):
     os.mkdir(exp_dir)
@@ -68,7 +68,7 @@ class Solver(object):
             utils.get_dicova_partitions()
 
         """Training Data"""
-        self.training_data = coughvid.COUGHVID(config=self.config)
+        self.training_data = librispeech.LibriSpeech(config=self.config)
         self.training_data.get_partition()
 
         """Partition file"""

@@ -14,27 +14,30 @@ data:
     num_augment_examples: 600
 
 directories:
-    coswara_root: /home/john/Documents/School/Spring_2021/Coswara-Data/Extracted_data/
-    dicova_root: /home/john/Documents/School/Spring_2021/DiCOVA_Train_Val_Data_Release_updated/
-    freesound_root: /home/john/Documents/School/Spring_2021/FSDKaggle2018AudioDataset/
-    coughvid_root: /home/john/Documents/School/Spring_2021/COUGHVID/public_dataset/
+    coswara_root: /home/john/Documents/Spring_2021/Coswara-Data/Extracted_data/
+    dicova_root: /home/john/Documents/Spring_2021/DiCOVA_Train_Val_Data_Release_updated/
+    freesound_root: /home/john/Documents/Spring_2021/FSDKaggle2018AudioDataset/
+    coughvid_root: /home/john/Documents/Spring_2021/COUGHVID/public_dataset/
+    librispeech_root: /home/john/Documents/Spring_2021/datasets/LibriSpeech/train-clean-100/
     freesound_logspect_feats: freesound_logspect_feats/
     dicova_wavs: dicova_wavs/
     coughvid_wavs: coughvid_wavs/
+    librispeech_wavs: librispeech_wavs/
     coughvid_logspect_feats: coughvid_logspect_feats/
     dicova_logspect_feats: dicova_logspect_feats/
+    librispeech_logspect_feats: librispeech_logspect_feats/
     dicova_augmented_feats: dicova_augmented_feats/
     dicova_opensmile_feats: dicova_opensmile_feats/
     opensmile_feats: opensmile_feats/
     features: features/
     exps: exps/
-    dicova_test_root: /home/john/Documents/School/Spring_2021/DiCOVA_Track_1_Evaluation_Release/
+    dicova_test_root: /home/john/Documents/Spring_2021/DiCOVA_Track_1_Evaluation_Release/
     dicova_test_wavs: dicova_test_wavs/
     dicova_test_logspect_feats: dicova_test_logspect_feats/
     dataloader_temp_wavs: dataloader_temp_wavs/
 
 model:
-    name: PostPreTrainClassifier
+    name: PreTrainer2
     batch_first: true
     dropout: 0.0
     lr: 0.00001
