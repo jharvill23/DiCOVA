@@ -76,6 +76,24 @@ def main(args):
                          './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/47500-G.ckpt',
                          './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/65000-G.ckpt']}
 
+    """1 future frame ablation
+    REMEMBER TO CHANGE CONFIG FILE TO HAVE 1ff when you run these models"""
+    one_ff_ablation_models = {'1': ['./exps/fold_1_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/38500-G.ckpt',
+                                    './exps/fold_1_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/20000-G.ckpt',
+                                    './exps/fold_1_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/65000-G.ckpt'],
+                              '2': ['./exps/fold_2_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/73500-G.ckpt',
+                                    './exps/fold_2_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/146500-G.ckpt',
+                                    './exps/fold_2_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/172000-G.ckpt'],
+                              '3': ['./exps/fold_3_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/37500-G.ckpt',
+                                    './exps/fold_3_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/132500-G.ckpt',
+                                    './exps/fold_3_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/183500-G.ckpt'],
+                              '4': ['./exps/fold_4_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/10000-G.ckpt',
+                                    './exps/fold_4_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/20000-G.ckpt',
+                                    './exps/fold_4_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/87500-G.ckpt'],
+                              '5': ['./exps/fold_5_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/47500-G.ckpt',
+                                    './exps/fold_5_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/14500-G.ckpt',
+                                    './exps/fold_5_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/152000-G.ckpt']}
+
     # outfiles = []
     # for fold in ['1', '2', '3', '4', '5']:
     #     paths = []
@@ -216,7 +234,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments to train classifier')
     # parser.add_argument('--TRIAL', type=str, default='Evaluations_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_ensemble')
-    parser.add_argument('--TRIAL', type=str, default='Evaluations_best_config_vs_baselines')
+    parser.add_argument('--TRIAL', type=str, default='Evaluations_ablations')
     parser.add_argument('--TRAIN', action='store_true', default=False)
     parser.add_argument('--LOAD_MODEL', action='store_true', default=False)
     parser.add_argument('--FOLD', type=str, default='1')
