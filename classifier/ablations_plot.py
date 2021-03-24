@@ -58,6 +58,9 @@ def get_mean_outfile(outfile_list, dump_path):
         pickle.dump(scores, f)
 
 def main(args):
+    TRIAL = args.TRIAL
+    if not os.path.isdir(TRIAL):
+        os.mkdir(TRIAL)
     """Best performing set"""
     best_models = []
     best_models = {'1': ['./exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0/models/71000-G.ckpt',
@@ -94,138 +97,143 @@ def main(args):
                                     './exps/fold_5_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/14500-G.ckpt',
                                     './exps/fold_5_scaling_1_ff_pretraining_coughvid_specaug_prob_1dot0/models/152000-G.ckpt']}
 
+    """Higher layers ablation"""
+    high_layers_ablation_models = {
+        '1': ['./exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_high_layers/models/161000-G.ckpt',
+              './exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_high_layers/models/182500-G.ckpt',
+              './exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_high_layers/models/184500-G.ckpt'],
+        '2': ['./exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_high_layers/models/97000-G.ckpt',
+              './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_high_layers/models/82000-G.ckpt',
+              './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_high_layers/models/173000-G.ckpt'],
+        '3': ['./exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_high_layers/models/48000-G.ckpt',
+              './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_high_layers/models/69000-G.ckpt',
+              './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_high_layers/models/79000-G.ckpt'],
+        '4': ['./exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_high_layers/models/154000-G.ckpt',
+              './exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_high_layers/models/160500-G.ckpt',
+              './exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_high_layers/models/169500-G.ckpt'],
+        '5': ['./exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_high_layers/models/33000-G.ckpt',
+              './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_high_layers/models/47000-G.ckpt',
+              './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_1dot0_high_layers/models/132500-G.ckpt']}
+
+    """SpecAugment 50% ablation"""
+    specaug_ablation_models = {
+        '1': ['./exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/58000-G.ckpt',
+              './exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/67000-G.ckpt',
+              './exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/83500-G.ckpt'],
+        '2': ['./exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/102000-G.ckpt',
+              './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/122500-G.ckpt',
+              './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/118000-G.ckpt'],
+        '3': ['./exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/6500-G.ckpt',
+              './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/10000-G.ckpt',
+              './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/67500-G.ckpt'],
+        '4': ['./exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/65000-G.ckpt',
+              './exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/84000-G.ckpt',
+              './exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/92000-G.ckpt'],
+        '5': ['./exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/97000-G.ckpt',
+              './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/29000-G.ckpt',
+              './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/99500-G.ckpt']}
+    for models in [one_ff_ablation_models, high_layers_ablation_models, specaug_ablation_models]:
+        outfiles = []
+        if models == one_ff_ablation_models:
+            name = 'one_ff'
+        elif models == high_layers_ablation_models:
+            name = 'high_layers'
+        elif models == specaug_ablation_models:
+            name = 'specaug_ablation'
+        elif models == best_models:
+            name = 'best_models'
+        for fold in ['1', '2', '3', '4', '5']:
+            paths = []
+            eval_paths = []
+            for checkpoint in models[fold]:
+                """"""
+                model_number = checkpoint.split('/')[-1][:-7]
+                """"""
+                args.TRIAL = os.path.join(TRIAL, name)
+                solver = Solver(config=config, training_args=args)
+                solver.fold = fold
+                solver.restore_model(G_path=checkpoint)
+                solver.test_fold = fold
+                eval_score_path, eval_ensemb_type_dir = solver.eval_ensemble(model_num=model_number)
+                specific_path, fold_score_path, eval_type_dir = solver.val_scores_ensemble(model_num=model_number)
+                paths.append(specific_path)
+                eval_paths.append(eval_score_path)
+            """We get scores from individual models. Need to load those scores and take mean"""
+            file_scores = {}
+            for dictionary in paths:
+                score_path = dictionary['score_path']
+                file1 = open(score_path, 'r')
+                Lines = file1.readlines()
+                for line in Lines:
+                    line = line[:-1]
+                    pieces = line.split(' ')
+                    filename = pieces[0]
+                    score = pieces[1]
+                    if filename not in file_scores:
+                        file_scores[filename] = [score]
+                    else:
+                        file_scores[filename].append(score)
+            file_final_scores = []
+            for key, score_list in file_scores.items():
+                sum = 0
+                for score in score_list:
+                    sum += float(score)
+                sum = sum / len(score_list)
+                file_final_scores.append(key + ' ' + str(sum))
+            with open(fold_score_path, 'w') as f:
+                for item in file_final_scores:
+                    f.write("%s\n" % item)
+
+            eval_file_scores = {}
+            for x in eval_paths:
+                score_path = x
+                file1 = open(score_path, 'r')
+                Lines = file1.readlines()
+                for line in Lines:
+                    line = line[:-1]
+                    pieces = line.split(' ')
+                    filename = pieces[0]
+                    score = pieces[1]
+                    if filename not in eval_file_scores:
+                        eval_file_scores[filename] = [score]
+                    else:
+                        eval_file_scores[filename].append(score)
+            eval_file_final_scores = []
+            for key, score_list in eval_file_scores.items():
+                sum = 0
+                for score in score_list:
+                    sum += float(score)
+                sum = sum / len(score_list)
+                eval_file_final_scores.append(key + ' ' + str(sum))
+            with open(os.path.join(eval_ensemb_type_dir, 'scores'), 'w') as f:
+                for item in eval_file_final_scores:
+                    f.write("%s\n" % item)
+
+            outfile_path = os.path.join(eval_type_dir, 'outfile.pkl')
+            utils.scoring(refs=paths[0]['gt_path'], sys_outs=fold_score_path, out_file=outfile_path)
+            # outfile_path = os.path.join(config.directories.exps, args.TRIAL, 'evaluations', fold, 'val', 'outfile.pkl')
+            outfiles.append(outfile_path)
+
+    # """Get the outfiles if they have already been made"""
     # outfiles = []
     # for fold in ['1', '2', '3', '4', '5']:
-    #     paths = []
-    #     eval_paths = []
-    #     for checkpoint in best_models[fold]:
-    #         """"""
-    #         model_number = checkpoint.split('/')[-1][:-7]
-    #         """"""
-    #         solver = Solver(config=config, training_args=args)
-    #         solver.fold = fold
-    #         solver.restore_model(G_path=checkpoint)
-    #         solver.test_fold = fold
-    #         eval_score_path, eval_ensemb_type_dir = solver.eval_ensemble(model_num=model_number)
-    #         specific_path, fold_score_path, eval_type_dir = solver.val_scores_ensemble(model_num=model_number)
-    #         paths.append(specific_path)
-    #         eval_paths.append(eval_score_path)
-    #     """We get scores from individual models. Need to load those scores and take mean"""
-    #     file_scores = {}
-    #     for dictionary in paths:
-    #         score_path = dictionary['score_path']
-    #         file1 = open(score_path, 'r')
-    #         Lines = file1.readlines()
-    #         for line in Lines:
-    #             line = line[:-1]
-    #             pieces = line.split(' ')
-    #             filename = pieces[0]
-    #             score = pieces[1]
-    #             if filename not in file_scores:
-    #                 file_scores[filename] = [score]
-    #             else:
-    #                 file_scores[filename].append(score)
-    #     file_final_scores = []
-    #     for key, score_list in file_scores.items():
-    #         sum = 0
-    #         for score in score_list:
-    #             sum += float(score)
-    #         sum = sum / len(score_list)
-    #         file_final_scores.append(key + ' ' + str(sum))
-    #     with open(fold_score_path, 'w') as f:
-    #         for item in file_final_scores:
-    #             f.write("%s\n" % item)
+    #     trial = args.TRIAL
+    #     filepath = os.path.join('./exps', trial, 'evaluations', fold, 'val', 'outfile.pkl')
+    #     if os.path.exists(filepath):
+    #         outfiles.append(filepath)
     #
-    #     eval_file_scores = {}
-    #     for x in eval_paths:
-    #         score_path = x
-    #         file1 = open(score_path, 'r')
-    #         Lines = file1.readlines()
-    #         for line in Lines:
-    #             line = line[:-1]
-    #             pieces = line.split(' ')
-    #             filename = pieces[0]
-    #             score = pieces[1]
-    #             if filename not in eval_file_scores:
-    #                 eval_file_scores[filename] = [score]
-    #             else:
-    #                 eval_file_scores[filename].append(score)
-    #     eval_file_final_scores = []
-    #     for key, score_list in eval_file_scores.items():
-    #         sum = 0
-    #         for score in score_list:
-    #             sum += float(score)
-    #         sum = sum / len(score_list)
-    #         eval_file_final_scores.append(key + ' ' + str(sum))
-    #     with open(os.path.join(eval_ensemb_type_dir, 'scores'), 'w') as f:
-    #         for item in eval_file_final_scores:
-    #             f.write("%s\n" % item)
+    # best_config_dump_path = os.path.join(config.directories.exps, args.TRIAL, 'best_config.pkl')
+    # folder = os.path.join(config.directories.exps, args.TRIAL)
+    # get_mean_outfile(outfile_list=outfiles, dump_path=best_config_dump_path)
     #
-    #     outfile_path = os.path.join(eval_type_dir, 'outfile.pkl')
-    #     utils.scoring(refs=paths[0]['gt_path'], sys_outs=fold_score_path, out_file=outfile_path)
-    #     # outfile_path = os.path.join(config.directories.exps, args.TRIAL, 'evaluations', fold, 'val', 'outfile.pkl')
-    #     outfiles.append(outfile_path)
-
-    """Get the outfiles if they have already been made"""
-    outfiles = []
-    for fold in ['1', '2', '3', '4', '5']:
-        trial = args.TRIAL
-        filepath = os.path.join('./exps', trial, 'evaluations', fold, 'val', 'outfile.pkl')
-        if os.path.exists(filepath):
-            outfiles.append(filepath)
-
-    best_config_dump_path = os.path.join(config.directories.exps, args.TRIAL, 'best_config.pkl')
-    folder = os.path.join(config.directories.exps, args.TRIAL)
-    get_mean_outfile(outfile_list=outfiles, dump_path=best_config_dump_path)
-
-    """Now get the linear regression outfiles"""
-    lr_folder = os.path.join(folder, 'linear_regression')
-    if not os.path.isdir(lr_folder):
-        os.mkdir(lr_folder)
-    outfiles = []
-    for fold in ['1', '2', '3', '4', '5']:
-        score_filepath = '/home/john/Documents/School/Spring_2021/DICOVA/DiCOVA_baseline/results_lr/fold_' + fold + '/val_scores.txt'
-        gt_path = '/home/john/Documents/School/Spring_2021/DiCOVA/exps/Evaluations_best_config_vs_baselines/val_labels_per_fold/val_labels_fold_' + fold
-        outfile_path = os.path.join(lr_folder, 'fold_' + fold + '.pkl')
-        outfiles.append(outfile_path)
-        utils.scoring_for_paper(refs=gt_path, sys_outs=score_filepath, out_file=outfile_path)
-    linear_regression_dump_path = os.path.join(config.directories.exps, args.TRIAL, 'linear_regression.pkl')
-    get_mean_outfile(outfile_list=outfiles, dump_path=linear_regression_dump_path)
-
-    """Now get the random forest outfiles"""
-    rf_folder = os.path.join(folder, 'random_forest')
-    if not os.path.isdir(rf_folder):
-        os.mkdir(rf_folder)
-    outfiles = []
-    for fold in ['1', '2', '3', '4', '5']:
-        score_filepath = '/home/john/Documents/School/Spring_2021/DICOVA/DiCOVA_baseline/results_rf/fold_' + fold + '/val_scores.txt'
-        gt_path = '/home/john/Documents/School/Spring_2021/DiCOVA/exps/Evaluations_best_config_vs_baselines/val_labels_per_fold/val_labels_fold_' + fold
-        outfile_path = os.path.join(rf_folder, 'fold_' + fold + '.pkl')
-        outfiles.append(outfile_path)
-        utils.scoring_for_paper(refs=gt_path, sys_outs=score_filepath, out_file=outfile_path)
-    random_forest_dump_path = os.path.join(config.directories.exps, args.TRIAL, 'random_forest.pkl')
-    get_mean_outfile(outfile_list=outfiles, dump_path=random_forest_dump_path)
-
-    """Now get the multilayer perceptron outfiles"""
-    mlp_folder = os.path.join(folder, 'multilayer_perceptron')
-    if not os.path.isdir(mlp_folder):
-        os.mkdir(mlp_folder)
-    outfiles = []
-    for fold in ['1', '2', '3', '4', '5']:
-        score_filepath = '/home/john/Documents/School/Spring_2021/DICOVA/DiCOVA_baseline/results_mlp/fold_' + fold + '/val_scores.txt'
-        gt_path = '/home/john/Documents/School/Spring_2021/DiCOVA/exps/Evaluations_best_config_vs_baselines/val_labels_per_fold/val_labels_fold_' + fold
-        outfile_path = os.path.join(mlp_folder, 'fold_' + fold + '.pkl')
-        outfiles.append(outfile_path)
-        utils.scoring_for_paper(refs=gt_path, sys_outs=score_filepath, out_file=outfile_path)
-    multilayer_perceptron_dump_path = os.path.join(config.directories.exps, args.TRIAL, 'multilayer_perceptron.pkl')
-    get_mean_outfile(outfile_list=outfiles, dump_path=multilayer_perceptron_dump_path)
-
-    outfiles = [best_config_dump_path, linear_regression_dump_path,
-                random_forest_dump_path, multilayer_perceptron_dump_path]
-
-    names = ['Best config', 'Linear Regression', 'Random Forest', 'Multi-layer Perceptron']
-
-    utils.eval_summary_paper_plotting(folname=folder, outfiles=outfiles, names=names)
+    #
+    #
+    # outfiles = [best_config_dump_path, linear_regression_dump_path,
+    #             random_forest_dump_path, multilayer_perceptron_dump_path]
+    #
+    # names = ['Best config', 'Linear Regression', 'Random Forest', 'Multi-layer Perceptron']
+    #
+    # utils.eval_summary_paper_plotting(folname=folder, outfiles=outfiles, names=names)
 
 
 

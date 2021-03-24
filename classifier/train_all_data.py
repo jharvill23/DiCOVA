@@ -279,7 +279,7 @@ class Solver(object):
                                                       'mode': 'train',
                                                       'data_object': self.training_data,
                                                       'specaugment': False})
-            val_gen = data.DataLoader(val_data, batch_size=config.train.batch_size,
+            val_gen = data.DataLoader(val_data, batch_size=10,
                                       shuffle=True, collate_fn=val_data.collate, drop_last=True)
 
             for batch_number, features in enumerate(train_gen):
