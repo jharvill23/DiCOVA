@@ -100,6 +100,7 @@ class Solver(object):
         """Build the model"""
         pretrain_config = copy.deepcopy(self.config)
         pretrain_config.model.name = 'PreTrainer2'
+        # pretrain_config.model.name = 'PreTrainer2HighLayers'
         """Load the weights"""
         self.pretrained = model.CTCmodel(pretrain_config)
         # pretrain_checkpoint = self._load('./exps/pretraining_trial_2/models/20000-G.ckpt')

@@ -132,7 +132,92 @@ def main(args):
         '5': ['./exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/97000-G.ckpt',
               './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/29000-G.ckpt',
               './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/99500-G.ckpt']}
-    for models in [one_ff_ablation_models, high_layers_ablation_models, specaug_ablation_models]:
+    # for models in [one_ff_ablation_models, high_layers_ablation_models, specaug_ablation_models, best_models]:
+    # for models in [high_layers_ablation_models]:
+    #     outfiles = []
+    #     if models == one_ff_ablation_models:
+    #         name = 'one_ff'
+    #     elif models == high_layers_ablation_models:
+    #         name = 'high_layers'
+    #     elif models == specaug_ablation_models:
+    #         name = 'specaug_ablation'
+    #     elif models == best_models:
+    #         name = 'best_models'
+    #     for fold in ['1', '2', '3', '4', '5']:
+    #         paths = []
+    #         eval_paths = []
+    #         for checkpoint in models[fold]:
+    #             """"""
+    #             model_number = checkpoint.split('/')[-1][:-7]
+    #             """"""
+    #             args.TRIAL = os.path.join(TRIAL, name)
+    #             solver = Solver(config=config, training_args=args)
+    #             solver.fold = fold
+    #             solver.restore_model(G_path=checkpoint)
+    #             solver.test_fold = fold
+    #             eval_score_path, eval_ensemb_type_dir = solver.eval_ensemble(model_num=model_number)
+    #             specific_path, fold_score_path, eval_type_dir = solver.val_scores_ensemble(model_num=model_number)
+    #             paths.append(specific_path)
+    #             eval_paths.append(eval_score_path)
+    #         """We get scores from individual models. Need to load those scores and take mean"""
+    #         file_scores = {}
+    #         for dictionary in paths:
+    #             score_path = dictionary['score_path']
+    #             file1 = open(score_path, 'r')
+    #             Lines = file1.readlines()
+    #             for line in Lines:
+    #                 line = line[:-1]
+    #                 pieces = line.split(' ')
+    #                 filename = pieces[0]
+    #                 score = pieces[1]
+    #                 if filename not in file_scores:
+    #                     file_scores[filename] = [score]
+    #                 else:
+    #                     file_scores[filename].append(score)
+    #         file_final_scores = []
+    #         for key, score_list in file_scores.items():
+    #             sum = 0
+    #             for score in score_list:
+    #                 sum += float(score)
+    #             sum = sum / len(score_list)
+    #             file_final_scores.append(key + ' ' + str(sum))
+    #         with open(fold_score_path, 'w') as f:
+    #             for item in file_final_scores:
+    #                 f.write("%s\n" % item)
+    #
+    #         eval_file_scores = {}
+    #         for x in eval_paths:
+    #             score_path = x
+    #             file1 = open(score_path, 'r')
+    #             Lines = file1.readlines()
+    #             for line in Lines:
+    #                 line = line[:-1]
+    #                 pieces = line.split(' ')
+    #                 filename = pieces[0]
+    #                 score = pieces[1]
+    #                 if filename not in eval_file_scores:
+    #                     eval_file_scores[filename] = [score]
+    #                 else:
+    #                     eval_file_scores[filename].append(score)
+    #         eval_file_final_scores = []
+    #         for key, score_list in eval_file_scores.items():
+    #             sum = 0
+    #             for score in score_list:
+    #                 sum += float(score)
+    #             sum = sum / len(score_list)
+    #             eval_file_final_scores.append(key + ' ' + str(sum))
+    #         with open(os.path.join(eval_ensemb_type_dir, 'scores'), 'w') as f:
+    #             for item in eval_file_final_scores:
+    #                 f.write("%s\n" % item)
+    #
+    #         outfile_path = os.path.join(eval_type_dir, 'outfile.pkl')
+    #         utils.scoring(refs=paths[0]['gt_path'], sys_outs=fold_score_path, out_file=outfile_path)
+    #         # outfile_path = os.path.join(config.directories.exps, args.TRIAL, 'evaluations', fold, 'val', 'outfile.pkl')
+    #         outfiles.append(outfile_path)
+
+    method_outfiles = []
+    librispeech_models = []
+    for models in [best_models, one_ff_ablation_models, high_layers_ablation_models, specaug_ablation_models, librispeech_models]:
         outfiles = []
         if models == one_ff_ablation_models:
             name = 'one_ff'
@@ -142,98 +227,30 @@ def main(args):
             name = 'specaug_ablation'
         elif models == best_models:
             name = 'best_models'
+        elif models == librispeech_models:
+            name = 'librispeech_ablation'
+
+        """Get the outfiles if they have already been made"""
+        outfiles = []
         for fold in ['1', '2', '3', '4', '5']:
-            paths = []
-            eval_paths = []
-            for checkpoint in models[fold]:
-                """"""
-                model_number = checkpoint.split('/')[-1][:-7]
-                """"""
-                args.TRIAL = os.path.join(TRIAL, name)
-                solver = Solver(config=config, training_args=args)
-                solver.fold = fold
-                solver.restore_model(G_path=checkpoint)
-                solver.test_fold = fold
-                eval_score_path, eval_ensemb_type_dir = solver.eval_ensemble(model_num=model_number)
-                specific_path, fold_score_path, eval_type_dir = solver.val_scores_ensemble(model_num=model_number)
-                paths.append(specific_path)
-                eval_paths.append(eval_score_path)
-            """We get scores from individual models. Need to load those scores and take mean"""
-            file_scores = {}
-            for dictionary in paths:
-                score_path = dictionary['score_path']
-                file1 = open(score_path, 'r')
-                Lines = file1.readlines()
-                for line in Lines:
-                    line = line[:-1]
-                    pieces = line.split(' ')
-                    filename = pieces[0]
-                    score = pieces[1]
-                    if filename not in file_scores:
-                        file_scores[filename] = [score]
-                    else:
-                        file_scores[filename].append(score)
-            file_final_scores = []
-            for key, score_list in file_scores.items():
-                sum = 0
-                for score in score_list:
-                    sum += float(score)
-                sum = sum / len(score_list)
-                file_final_scores.append(key + ' ' + str(sum))
-            with open(fold_score_path, 'w') as f:
-                for item in file_final_scores:
-                    f.write("%s\n" % item)
+            trial = TRIAL
+            filepath = os.path.join('./exps', trial, name, 'evaluations', fold, 'val', 'outfile.pkl')
+            if os.path.exists(filepath):
+                outfiles.append(filepath)
 
-            eval_file_scores = {}
-            for x in eval_paths:
-                score_path = x
-                file1 = open(score_path, 'r')
-                Lines = file1.readlines()
-                for line in Lines:
-                    line = line[:-1]
-                    pieces = line.split(' ')
-                    filename = pieces[0]
-                    score = pieces[1]
-                    if filename not in eval_file_scores:
-                        eval_file_scores[filename] = [score]
-                    else:
-                        eval_file_scores[filename].append(score)
-            eval_file_final_scores = []
-            for key, score_list in eval_file_scores.items():
-                sum = 0
-                for score in score_list:
-                    sum += float(score)
-                sum = sum / len(score_list)
-                eval_file_final_scores.append(key + ' ' + str(sum))
-            with open(os.path.join(eval_ensemb_type_dir, 'scores'), 'w') as f:
-                for item in eval_file_final_scores:
-                    f.write("%s\n" % item)
+        best_config_dump_path = os.path.join(config.directories.exps, TRIAL, name + '.pkl')
+        folder = os.path.join(config.directories.exps, TRIAL)
+        get_mean_outfile(outfile_list=outfiles, dump_path=best_config_dump_path)
+        method_outfiles.append(best_config_dump_path)
 
-            outfile_path = os.path.join(eval_type_dir, 'outfile.pkl')
-            utils.scoring(refs=paths[0]['gt_path'], sys_outs=fold_score_path, out_file=outfile_path)
-            # outfile_path = os.path.join(config.directories.exps, args.TRIAL, 'evaluations', fold, 'val', 'outfile.pkl')
-            outfiles.append(outfile_path)
 
-    # """Get the outfiles if they have already been made"""
-    # outfiles = []
-    # for fold in ['1', '2', '3', '4', '5']:
-    #     trial = args.TRIAL
-    #     filepath = os.path.join('./exps', trial, 'evaluations', fold, 'val', 'outfile.pkl')
-    #     if os.path.exists(filepath):
-    #         outfiles.append(filepath)
-    #
-    # best_config_dump_path = os.path.join(config.directories.exps, args.TRIAL, 'best_config.pkl')
-    # folder = os.path.join(config.directories.exps, args.TRIAL)
-    # get_mean_outfile(outfile_list=outfiles, dump_path=best_config_dump_path)
-    #
-    #
-    #
+
     # outfiles = [best_config_dump_path, linear_regression_dump_path,
     #             random_forest_dump_path, multilayer_perceptron_dump_path]
-    #
-    # names = ['Best config', 'Linear Regression', 'Random Forest', 'Multi-layer Perceptron']
-    #
-    # utils.eval_summary_paper_plotting(folname=folder, outfiles=outfiles, names=names)
+
+    names = ['Best Test Config', 'One Future Frame', 'Higher Layers', '50% SpecAugment', 'LibriSpeech Pretraining']
+
+    utils.eval_summary_paper_plotting(folname=folder, outfiles=method_outfiles, names=names)
 
 
 

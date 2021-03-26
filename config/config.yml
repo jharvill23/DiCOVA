@@ -47,7 +47,7 @@ train:
     num_epochs: 700
     batch_size: 3
     specaugment: true
-    specaug_probability: 1.0
+    specaug_probability: 0.0
 
 pretraining:
     future_frames: 10

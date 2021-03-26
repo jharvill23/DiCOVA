@@ -28,6 +28,8 @@ import sox
 import copy
 import string
 import opensmile
+from matplotlib import rc
+import matplotlib
 
 config = get_config.get()
 
@@ -607,6 +609,7 @@ def summary(folname, scores, iterations):
 
 def eval_summary(folname, outfiles):
     # folname = sys.argv[1]
+    # matplotlib.rc('pdf', fonttype=42)
     num_files = len(outfiles)
     R = []
     for file in outfiles:
@@ -660,6 +663,28 @@ def eval_summary(folname, outfiles):
 
 def eval_summary_paper_plotting(folname, outfiles, names):
     # folname = sys.argv[1]
+
+    from matplotlib import font_manager
+
+    font_dirs = ['./fonts']
+    font_files = font_manager.findSystemFonts(fontpaths=font_dirs)
+
+    for font_file in font_files:
+        font_manager.fontManager.addfont(font_file)
+
+    # set font
+    plt.rcParams['font.family'] = 'Times New Roman'
+
+    # import matplotlib.font_manager
+    # flist = matplotlib.font_manager.get_fontconfig_fonts()
+    # names = [matplotlib.font_manager.FontProperties(fname=fname).get_name() for fname in flist]
+    # print(names)
+
+    # rc('font', **{'family': 'sans-serif', 'sans-serif': ['FreeSans']})
+    # plt.rcParams['pdf.fonttype'] = 42
+
+    # plt.rcParams["font.family"] = "FreeSerif"
+
     num_files = len(outfiles)
     R = []
     for file in outfiles:
@@ -669,7 +694,7 @@ def eval_summary_paper_plotting(folname, outfiles, names):
         R.append(res)
 
     # Plot ROC curves
-    clr = ['tab:green', 'tab:red', 'tab:blue', 'tab:purple']
+    clr = ['tab:green', 'tab:red', 'tab:blue', 'tab:purple', 'tab:orange']
     # clr_1 = 'tab:green'
     # clr_2 = 'tab:red'
     # clr_3 = 'tab:blue'
@@ -686,7 +711,7 @@ def eval_summary_paper_plotting(folname, outfiles, names):
     data_y = np.array(data_y)
     # plt.plot(np.mean(data_x, axis=0), np.mean(data_y, axis=0),
     #          label='AVG, auc=' + str(np.round(np.mean(np.array(data_auc)), 2)), c=clr_2, alpha=1, linewidth=2)
-    plt.plot([0, 1], [0, 1], linestyle='--', label='chance', c=clr_3, alpha=.5)
+    plt.plot([0, 1], [0, 1], linestyle='--', label='Chance', c=clr_3, alpha=.5)
     plt.legend(loc='lower right', frameon=False)
     plt.gca().spines['right'].set_visible(False)
     plt.gca().spines['top'].set_visible(False)

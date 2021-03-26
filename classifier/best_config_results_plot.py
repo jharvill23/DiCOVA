@@ -205,7 +205,7 @@ def main(args):
     outfiles = [best_config_dump_path, linear_regression_dump_path,
                 random_forest_dump_path, multilayer_perceptron_dump_path]
 
-    names = ['Best config', 'Linear Regression', 'Random Forest', 'Multi-layer Perceptron']
+    names = ['Best Test Config', 'Linear Regression', 'Random Forest', 'Multi-layer Perceptron']
 
     utils.eval_summary_paper_plotting(folname=folder, outfiles=outfiles, names=names)
 
