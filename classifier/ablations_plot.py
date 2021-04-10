@@ -132,8 +132,27 @@ def main(args):
         '5': ['./exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/97000-G.ckpt',
               './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/29000-G.ckpt',
               './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot5/models/99500-G.ckpt']}
+
+    """SpecAugment 0% ablation"""
+    specaug_0_ablation_models = {
+        '1': ['./exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot0/models/17000-G.ckpt',
+              './exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot0/models/22000-G.ckpt',
+              './exps/fold_1_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot0/models/24000-G.ckpt'],
+        '2': ['./exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot0/models/14000-G.ckpt',
+              './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot0/models/53000-G.ckpt',
+              './exps/fold_2_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot0/models/62500-G.ckpt'],
+        '3': ['./exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot0/models/7000-G.ckpt',
+              './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot0/models/44500-G.ckpt',
+              './exps/fold_3_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot0/models/69000-G.ckpt'],
+        '4': ['./exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot0/models/13500-G.ckpt',
+              './exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot0/models/34000-G.ckpt',
+              './exps/fold_4_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot0/models/79000-G.ckpt'],
+        '5': ['./exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot0/models/74000-G.ckpt',
+              './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot0/models/29000-G.ckpt',
+              './exps/fold_5_scaling_10_ff_pretraining_coughvid_specaug_prob_0dot0/models/18000-G.ckpt']}
+
     # for models in [one_ff_ablation_models, high_layers_ablation_models, specaug_ablation_models, best_models]:
-    # for models in [high_layers_ablation_models]:
+    # for models in [specaug_0_ablation_models]:
     #     outfiles = []
     #     if models == one_ff_ablation_models:
     #         name = 'one_ff'
@@ -141,6 +160,8 @@ def main(args):
     #         name = 'high_layers'
     #     elif models == specaug_ablation_models:
     #         name = 'specaug_ablation'
+    #     elif models == specaug_0_ablation_models:
+    #         name = 'specaug_0_ablation'
     #     elif models == best_models:
     #         name = 'best_models'
     #     for fold in ['1', '2', '3', '4', '5']:
@@ -217,7 +238,8 @@ def main(args):
 
     method_outfiles = []
     librispeech_models = []
-    for models in [best_models, one_ff_ablation_models, high_layers_ablation_models, specaug_ablation_models, librispeech_models]:
+    for models in [best_models, one_ff_ablation_models, high_layers_ablation_models,
+                   specaug_ablation_models, specaug_0_ablation_models, librispeech_models]:
         outfiles = []
         if models == one_ff_ablation_models:
             name = 'one_ff'
@@ -225,6 +247,8 @@ def main(args):
             name = 'high_layers'
         elif models == specaug_ablation_models:
             name = 'specaug_ablation'
+        elif models == specaug_0_ablation_models:
+            name = 'specaug_0_ablation'
         elif models == best_models:
             name = 'best_models'
         elif models == librispeech_models:
@@ -248,7 +272,7 @@ def main(args):
     # outfiles = [best_config_dump_path, linear_regression_dump_path,
     #             random_forest_dump_path, multilayer_perceptron_dump_path]
 
-    names = ['Best Test Config', 'One Future Frame', 'Higher Layers', '50% SpecAugment', 'LibriSpeech Pretraining']
+    names = ['Best Test Config', 'One Future Frame', 'Higher Layers', '50% SpecAugment', '0% SpecAugment', 'LibriSpeech Pretraining']
 
     utils.eval_summary_paper_plotting(folname=folder, outfiles=method_outfiles, names=names)
 

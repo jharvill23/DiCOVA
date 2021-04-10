@@ -694,7 +694,7 @@ def eval_summary_paper_plotting(folname, outfiles, names):
         R.append(res)
 
     # Plot ROC curves
-    clr = ['tab:green', 'tab:red', 'tab:blue', 'tab:purple', 'tab:orange']
+    clr = ['tab:green', 'tab:red', 'tab:blue', 'tab:purple', 'tab:orange', 'tab:brown']
     # clr_1 = 'tab:green'
     # clr_2 = 'tab:red'
     # clr_3 = 'tab:blue'
